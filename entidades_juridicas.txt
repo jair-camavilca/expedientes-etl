@@ -1,0 +1,52 @@
+# Catálogo editable de entidades y términos institucionales.
+# Escriba un término por línea. Las líneas que comienzan con # son comentarios.
+# El script conserva también su catálogo interno como respaldo.
+asociación
+asoc
+club
+cooperativa
+empresa
+sociedad
+comunidad
+comité
+junta
+universidad
+instituto
+banco
+caja
+fundación
+sindicato
+colegio profesional
+iglesia
+congregación
+inmobiliaria
+inmobiliario
+condominio
+constructora
+promotora
+arrendadora
+administradora
+arenera
+camposanto
+cementos
+comercial
+corporativa
+desarrollo inmobiliario
+edificaciones
+realtors
+radiodifusión
+servicios
+inversiones
+agrícola
+ministerio
+municipalidad
+sbn
+sunarp
+indecopi
+ipae
+copamo
+interseguro
+sucesión
+sucesores
+herencia
+masa hereditaria

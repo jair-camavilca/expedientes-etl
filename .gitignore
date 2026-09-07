@@ -1,0 +1,20 @@
+# Datos judiciales y resultados locales: nunca subir al repositorio.
+entrada/*
+!entrada/.gitkeep
+salida/*
+!salida/.gitkeep
+notas/*
+!notas/.gitkeep
+
+# Entorno y archivos generados por Python/Windows.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+*.log
+Thumbs.db
+Desktop.ini
+README_DESARROLLO.md
+MEMORY.md
