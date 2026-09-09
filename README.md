@@ -1,5 +1,11 @@
 # Expedientes ETL
 
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Excel](https://img.shields.io/badge/Excel-217346?style=for-the-badge&logo=microsoftexcel&logoColor=white)](https://www.microsoft.com/microsoft-365/excel)
+[![Word](https://img.shields.io/badge/Word-2B579A?style=for-the-badge&logo=microsoftword&logoColor=white)](https://www.microsoft.com/microsoft-365/word)
+![ETL](https://img.shields.io/badge/Proceso-ETL-6A1B9A?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-1.0.0-2EA44F?style=for-the-badge)
+
 Herramienta de procesamiento de datos judiciales que transforma archivos Excel y Word en libros Excel uniformes para alimentar sistemas de consulta judicial.
 
 El sistema extrae y estandariza dos campos de salida:
@@ -180,6 +186,6 @@ Revise el Word original. Significa que se encontró la etiqueta de expediente, p
 
 Los archivos judiciales pueden contener información sensible. No suba documentos de entrada, resultados ni reportes al repositorio. El `.gitignore` incluido excluye esas carpetas; verifique siempre los archivos seleccionados antes de hacer `git push`.
 
-## Licencia y distribución
+## Contexto
 
-Este repositorio debe mantenerse privado y compartirse únicamente con las personas autorizadas. La licencia y las reglas de distribución pueden definirse según la política de la organización.
+* Proyecto en empresa
