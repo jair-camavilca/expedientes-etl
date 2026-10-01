@@ -7,7 +7,9 @@ columnas ``codigo`` y ``parte`` en un libro Excel formateado.
 from __future__ import annotations
 
 import argparse
+from datetime import date
 import re
+import shutil
 import subprocess
 import sys
 import unicodedata
@@ -50,6 +52,10 @@ PARTY_CONNECTOR_RE = re.compile(
     re.IGNORECASE,
 )
 SUCCESSION_RE = re.compile(r"^\s*(?:sucesi[oó]n|herencia|masa\s+hereditaria)\b", re.IGNORECASE)
+SECTION_LABEL_RE = re.compile(
+    r"^\s*(?:relaci[oó]n|sede|edificio|anexo|listado|local|distrito)\b",
+    re.IGNORECASE,
+)
 LEGAL_ENTITY_RE = re.compile(
     r"\b(?:S\.?\s*A\.?\s*C?\.?|S\.?\s*R\.?\s*L\.?|E\.?\s*I\.?\s*R\.?\s*L\.?|S\.?\s*A\.?\s*A?\.?|SBN|SUNARP|INDECOPI|IPAE|COPAMO|INTERSEGURO|MINISTERIO|MUNICIPALIDAD|PODER\s+JUDICIAL|GOBIERNO\s+REGIONAL|SUPERINTENDENCIA|ASOCIACI(?:O|Ó)N(?:ES)?|ASOC\.?|CLUB|COOPERATIVA|COOPERATIVAS|EMPRESA|SOCIEDAD|COMUNIDAD|COMIT[EÉ]|JUNTA|UNIVERSIDAD|INSTITUTO|BANCO|CAJA|FUNDACI(?:O|Ó)N|SINDICATO|COLEGIO\s+PROFESIONAL|IGLESIA|CONGREGACI(?:O|Ó)N|INMOBILIARIA|INMOBILIARIO|CONDOMINIO|CONSTRUCTORA|PROMOTORA|ARRENDADORA|INVERSIONES|AGR[IÍ]COLA|SUCESORES?)\b",
     re.IGNORECASE,
@@ -63,9 +69,23 @@ CIVIL_STATUS_SUFFIX_RE = re.compile(
 SCRIPT_DIR = Path(__file__).resolve().parent
 WORKSPACE_DIR = SCRIPT_DIR
 DEFAULT_OUTPUT = WORKSPACE_DIR / "salida" / "expedientes_etl_resultado.xlsx"
-QUALITY_DIR = WORKSPACE_DIR / "notas"
+QUALITY_DIR = WORKSPACE_DIR / "salida" / "control_calidad"
 INPUT_DIRS = (WORKSPACE_DIR / "entrada",)
-ENTITY_CATALOG_PATH = SCRIPT_DIR / "entidades_juridicas.txt"
+ARCHIVE_ROOT = SCRIPT_DIR / "trabajos"
+CONFIG_DIR = SCRIPT_DIR / "config"
+ENTITY_CATALOG_PATH = CONFIG_DIR / "entidades_juridicas.txt"
+GIVEN_NAME_CATALOG_PATH = CONFIG_DIR / "nombres_persona.txt"
+
+
+def configure_workspace(workspace_dir: Path) -> None:
+    """Configura las carpetas operativas de un trabajo independiente."""
+    global WORKSPACE_DIR, DEFAULT_OUTPUT, QUALITY_DIR, INPUT_DIRS
+    WORKSPACE_DIR = Path(workspace_dir).expanduser().resolve()
+    DEFAULT_OUTPUT = WORKSPACE_DIR / "salida" / "expedientes_etl_resultado.xlsx"
+    QUALITY_DIR = WORKSPACE_DIR / "salida" / "control_calidad"
+    INPUT_DIRS = (WORKSPACE_DIR / "entrada",)
+    for directory in (INPUT_DIRS[0], DEFAULT_OUTPUT.parent, QUALITY_DIR):
+        directory.mkdir(parents=True, exist_ok=True)
 
 
 @dataclass(frozen=True)
@@ -108,6 +128,22 @@ def is_legal_entity(text: str) -> bool:
     return bool(LEGAL_ENTITY_RE.search(text) or (ENTITY_CATALOG_RE and ENTITY_CATALOG_RE.search(text)))
 
 
+def load_given_names(path: Path) -> set[str]:
+    """Carga nombres frecuentes para separar nombres de apellidos sin coma."""
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return set()
+    return {
+        normalize_text(line).casefold()
+        for line in lines
+        if normalize_text(line) and not normalize_text(line).startswith("#")
+    }
+
+
+GIVEN_NAME_CATALOG = load_given_names(GIVEN_NAME_CATALOG_PATH)
+
+
 def normalize_code(value: object) -> str | None:
     """Normaliza un expediente y rellena el correlativo inicial a cinco dígitos."""
     text = normalize_text(value).upper().replace("–", "-").replace("—", "-")
@@ -136,11 +172,35 @@ def iter_codes(value: object) -> Iterator[str]:
             yield normalize_text(match.group("code")).replace(" ", "")
 
 
+def code_quality_issue(code: str) -> str | None:
+    """Describe un código atípico sin modificar el valor entregado por la fuente."""
+    if not code or code == "NO DEFINIDO":
+        return None
+    chunks = code.split("-")
+    if any(not chunk for chunk in chunks):
+        return "Código con segmento vacío; confirmar en la fuente"
+    if len(chunks) != 7:
+        return "Código con estructura incompleta; confirmar en la fuente"
+    if not chunks[0].isdigit() or len(chunks[0]) != 5:
+        return "Primer segmento del código no tiene cinco dígitos; confirmar en la fuente"
+    if not chunks[1].isdigit() or len(chunks[1]) != 4:
+        return "Año del código atípico; confirmar en la fuente"
+    if any(not chunk for chunk in chunks):
+        return "Código con segmento vacío; confirmar en la fuente"
+    return None
+
+
 def _strip_accents(value: str) -> str:
     return "".join(
         char for char in unicodedata.normalize("NFD", value)
         if unicodedata.category(char) != "Mn"
     )
+
+
+def _header_key(value: object) -> str:
+    """Normaliza encabezados ignorando signos, tildes y diferencias de formato."""
+    text = _strip_accents(normalize_text(value)).casefold()
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
 
 
 def _looks_like_natural_person(text: str) -> bool:
@@ -156,6 +216,12 @@ def _clean_candidate(text: str) -> str:
     text = re.sub(r"\b(?:demandante|demandado|actor|actora|emplazado|emplazada)\b\s*:?[ ]*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip(" ,;:-")
     return text
+
+
+def _is_section_label(text: str) -> bool:
+    """Identifica títulos de sección que no representan una parte procesal."""
+    cleaned = normalize_text(text)
+    return bool(cleaned and SECTION_LABEL_RE.match(cleaned) and not any(char.isdigit() for char in cleaned))
 
 
 def _first_litigant_segment(text: str) -> str:
@@ -212,11 +278,95 @@ def _surname_words(surname_text: str) -> list[str]:
     return words
 
 
+def _first_surname_words(surname_text: str) -> list[str]:
+    """Obtiene el primer apellido, conservando sus partículas iniciales."""
+    words = re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'’-]+", surname_text)
+    if not words:
+        return []
+    lowered = [word.lower() for word in words]
+    end = 0
+    if lowered[0] in SURNAME_PARTICLES:
+        while end < len(lowered) and lowered[end] in SURNAME_PARTICLES:
+            end += 1
+        if end < len(lowered):
+            end += 1
+    else:
+        end = 1
+        # Un ``de`` posterior suele introducir apellido de casada:
+        # ``Rivera de Gonzales`` se conserva como ``Rivera``.
+    return words[:end]
+
+
+def _format_person_name(value: str) -> str:
+    """Capitaliza nombres y conserva partículas en minúscula."""
+    words = value.title().split()
+    for index, word in enumerate(words):
+        if index > 0 and word.casefold() in SURNAME_PARTICLES:
+            words[index] = word.lower()
+    return " ".join(words)
+
+
+def _person_without_comma(words: list[str]) -> str:
+    """Obtiene primer nombre + primer apellido desde un nombre sin coma."""
+    if len(words) <= 2:
+        return " ".join(words).title()
+
+    first_name_count = 1
+    if (
+        normalize_text(words[0]).casefold() in GIVEN_NAME_CATALOG
+        and normalize_text(words[1]).casefold() in GIVEN_NAME_CATALOG
+        and words[1].lower() not in SURNAME_PARTICLES
+    ):
+        first_name_count = 2
+
+    # Algunas fuentes incluyen una inicial entre el nombre y los apellidos:
+    # ``BLANCA I. TINOCO BENDEZU``.
+    while first_name_count < len(words) - 1 and len(
+        re.sub(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", "", words[first_name_count])
+    ) == 1:
+        first_name_count += 1
+
+    surname_words = _first_surname_words(" ".join(words[first_name_count:]))
+    if not surname_words:
+        return _format_person_name(" ".join(words[: min(len(words), 2)]))
+    return _format_person_name(" ".join([words[0], *surname_words]))
+
+
+def ambiguous_name_issue(source: object, selected: str) -> str | None:
+    """Detecta nombres sin coma que merecen confirmación sin alterar la salida."""
+    original = normalize_text(source)
+    cleaned = _clean_candidate(original)
+    if (
+        not selected
+        or not cleaned
+        or "," in cleaned
+        or SUCCESSION_RE.match(cleaned)
+        or is_legal_entity(cleaned)
+    ):
+        return None
+    words = re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'’-]+", cleaned)
+    if len(words) < 4 or len(selected.split()) > 2:
+        return None
+    return "Fuente sin coma con varios nombres; confirmar primer nombre y apellido"
+
+
+def single_surname_issue(source: object) -> str | None:
+    """Detecta un solo apellido aunque la salida ya incluya el nombre."""
+    original = normalize_text(source)
+    if "," not in original:
+        return None
+    surname_text = CIVIL_STATUS_SUFFIX_RE.sub("", original.split(",", 1)[0]).strip()
+    words = re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'’-]+", surname_text)
+    if len(words) == 1 and not is_legal_entity(surname_text):
+        return "Solo un apellido disponible; confirmar en la fuente"
+    return None
+
+
 def extract_surnames(value: object) -> str:
-    """Extrae los dos primeros apellidos de una persona natural.
+    """Extrae primer nombre + primer apellido de una persona natural.
 
     Se interpreta el formato judicial habitual ``APELLIDOS, Nombres``. En
-    formatos sin coma se toma el primer segmento plausible del litigio.
+    formatos sin coma se toma el primer nombre y el primer apellido plausible.
     """
     original = normalize_text(value)
     if not original:
@@ -231,21 +381,27 @@ def extract_surnames(value: object) -> str:
 
     for candidate in candidates:
         candidate = _clean_candidate(candidate)
-        if not _looks_like_natural_person(candidate):
-            continue
         if "," in candidate:
             surname_text = candidate.split(",", 1)[0]
+            given_text = candidate.split(",", 1)[1]
+            # El texto posterior a la coma puede incluir una entidad o cargo;
+            # para clasificar a la persona se evalúa únicamente el bloque de apellidos.
+            surname_words = re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'’-]+", surname_text)
+            given_words = re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'’-]+", given_text)
+            if not given_words:
+                given_words = [""]
+            if not _looks_like_natural_person(surname_text):
+                if len(surname_words) != 1 or is_legal_entity(surname_text):
+                    continue
+            first_surname = _first_surname_words(surname_text)
+            if first_surname:
+                return _format_person_name(" ".join([given_words[0], *first_surname]))
         else:
+            if not _looks_like_natural_person(candidate):
+                continue
+            candidate = CIVIL_STATUS_SUFFIX_RE.sub("", candidate).strip()
             words = re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'’-]+", candidate)
-            # Sin coma solo se aceptan dos tokens que no sean partículas.
-            if len(words) >= 2 and words[1].lower() in SURNAME_PARTICLES:
-                return words[0].title()
-            surname_text = " ".join(words[:2])
-        words = _surname_words(surname_text)
-        if len(words) >= 2:
-            return " ".join(words).title()
-        if len(words) == 1 and "," in candidate:
-            return words[0].title()
+            return _person_without_comma(words)
 
     # Si no hay persona natural, se conserva la primera razón social completa,
     # sin arrastrar el texto de la contraparte.
@@ -272,22 +428,55 @@ def choose_party(value: object) -> str:
 
 
 def _find_column(columns: Sequence[object], aliases: Iterable[str]) -> str | None:
-    normalized = {_strip_accents(normalize_text(column)).lower(): str(column) for column in columns}
+    normalized = {_header_key(column): str(column) for column in columns}
     for alias in aliases:
-        alias_key = _strip_accents(alias).lower()
+        alias_key = _header_key(alias)
         for column_key, original in normalized.items():
             if alias_key == column_key or alias_key in column_key:
                 return original
     return None
 
 
+def _excel_frames(path: Path) -> Iterator[pd.DataFrame]:
+    """Lee hojas Excel detectando la fila real de encabezados."""
+    sheets = pd.read_excel(path, sheet_name=None, header=None, dtype=str)
+    code_aliases = (
+        "codigo", "código", "expediente", "id expediente",
+        "identificador del expediente", "número de expediente",
+        "nro expediente", "n expediente", "n de expediente",
+    )
+    party_aliases = (
+        "parte", "partes", "litigante", "litigantes", "parte procesal",
+        "demandante", "demandado", "titular", "nombres y apellidos",
+        "nombre y apellidos", "nombre y apellido",
+    )
+    for raw in sheets.values():
+        if raw.empty:
+            continue
+        header_index: int | None = None
+        header_values: list[str] = []
+        for index, row in raw.iterrows():
+            values = [normalize_text(value) for value in row.tolist()]
+            code_header = _find_column(values, code_aliases)
+            party_header = _find_column(values, party_aliases)
+            if code_header and party_header:
+                header_index = index
+                header_values = [value or f"Unnamed: {column}" for column, value in enumerate(values)]
+                break
+        if header_index is None:
+            yield raw
+            continue
+        frame = raw.iloc[header_index + 1 :].copy()
+        frame.columns = header_values
+        yield frame
+
+
 def process_excel(path: Path, code_column: str | None = None, party_column: str | None = None, quality_issues: list[dict[str, str]] | None = None) -> list[Record]:
     """Lee todas las hojas de un Excel y transforma sus filas."""
-    sheets = pd.read_excel(path, sheet_name=None, dtype=str)
     records: list[Record] = []
-    code_aliases = ("codigo", "código", "expediente", "id expediente", "identificador del expediente", "número de expediente", "nro expediente")
-    party_aliases = ("parte", "partes", "litigante", "litigantes", "parte procesal", "demandante", "demandado", "titular")
-    for frame in sheets.values():
+    code_aliases = ("codigo", "código", "expediente", "id expediente", "identificador del expediente", "número de expediente", "nro expediente", "n expediente", "n de expediente")
+    party_aliases = ("parte", "partes", "litigante", "litigantes", "parte procesal", "demandante", "demandado", "titular", "nombres y apellidos", "nombre y apellidos", "nombre y apellido")
+    for frame in _excel_frames(path):
         if frame.empty:
             continue
         selected_code = code_column or _find_column(frame.columns, code_aliases)
@@ -296,11 +485,29 @@ def process_excel(path: Path, code_column: str | None = None, party_column: str 
             raise ValueError("No se encontró una columna de código/expediente en el Excel.")
         if not selected_party:
             raise ValueError("No se encontró una columna de parte/litigante en el Excel.")
+        code_header_keys = {_header_key(alias) for alias in code_aliases}
+        party_header_keys = {_header_key(alias) for alias in party_aliases}
         for _, row in frame.iterrows():
-            party = choose_party(row.get(selected_party, ""))
-            codes = list(iter_codes(row.get(selected_code, "")))
+            code_value = normalize_text(row.get(selected_code, ""))
+            party_value = normalize_text(row.get(selected_party, ""))
+            if not code_value and not party_value:
+                continue
+            if _header_key(code_value) in code_header_keys or _header_key(party_value) in party_header_keys:
+                continue
+            if not code_value and _is_section_label(party_value):
+                continue
+            party = choose_party(party_value)
+            codes = list(iter_codes(code_value))
+            name_issue = ambiguous_name_issue(party_value, party)
+            surname_issue = single_surname_issue(party_value)
             if not codes and quality_issues is not None:
                 quality_issues.append({"codigo": "", "parte": party, "nivel": "ALTA", "motivo": "Fila sin código judicial detectable"})
+            if name_issue and quality_issues is not None:
+                for code in codes or [""]:
+                    quality_issues.append({"codigo": code, "parte": party, "nivel": "MEDIA", "motivo": name_issue})
+            if surname_issue and quality_issues is not None:
+                for code in codes or [""]:
+                    quality_issues.append({"codigo": code, "parte": party, "nivel": "MEDIA", "motivo": surname_issue})
             for code in codes:
                 records.append(Record(code, party))
     return records
@@ -365,6 +572,22 @@ def process_word(path: Path, quality_issues: list[dict[str, str]] | None = None)
         party = _block_party(body)
         full_matches = list(COURT_CODE_RE.finditer(body))
         codes = list(iter_codes(body))
+        name_issue = ambiguous_name_issue(body.splitlines()[0] if body.splitlines() else body, party)
+        surname_issue = single_surname_issue(body.splitlines()[0] if body.splitlines() else body)
+        if name_issue and quality_issues is not None:
+            quality_issues.append({
+                "codigo": codes[0] if codes else "",
+                "parte": party,
+                "nivel": "MEDIA",
+                "motivo": name_issue,
+            })
+        if surname_issue and quality_issues is not None:
+            quality_issues.append({
+                "codigo": codes[0] if codes else "",
+                "parte": party,
+                "nivel": "MEDIA",
+                "motivo": surname_issue,
+            })
         has_empty_exp = bool(EMPTY_EXP_LABEL_RE.search(body))
         if has_empty_exp:
             records.append(Record("NO DEFINIDO", party))
@@ -480,6 +703,14 @@ def build_quality_reports(records: Sequence[Record], source_issues: Sequence[dic
     for record in records:
         by_code.setdefault(record.codigo, set()).add(record.parte)
         words = record.parte.split()
+        code_issue = code_quality_issue(record.codigo)
+        if code_issue:
+            alert_rows.append({
+                "codigo": record.codigo,
+                "parte": record.parte,
+                "nivel": "ALTA",
+                "motivo": code_issue,
+            })
         if not record.parte:
             review_rows.append({"codigo": record.codigo, "parte": "", "motivo": "Parte vacía"})
             alert_rows.append({"codigo": record.codigo, "parte": "", "nivel": "ALTA", "motivo": "Parte vacía; revisar titular en la fuente"})
@@ -596,7 +827,7 @@ def export_quality_reports(
     stem: str,
     processed_count: int = 0,
 ) -> Path:
-    """Guarda un libro Excel de control de calidad en la carpeta de notas."""
+    """Guarda un libro Excel de control de calidad en control_calidad."""
     output_dir.mkdir(parents=True, exist_ok=True)
     report_path = quality_path_for(output_dir, stem)
     workbook = Workbook()
@@ -721,9 +952,103 @@ def process_single_file(path: Path, code_column: str | None, party_column: str |
     return deduplicate(records)
 
 
+def process_file_to_outputs(
+    input_path: Path,
+    output_dir: Path,
+    quality_dir: Path,
+    code_column: str | None = None,
+    party_column: str | None = None,
+) -> dict[str, object]:
+    """Procesa una fuente y exporta resultado y control de calidad.
+
+    Esta función concentra el flujo común para la consola y la interfaz web.
+    """
+    quality_issues: list[dict[str, str]] = []
+    suffix = input_path.suffix.lower()
+    if suffix == ".xlsx":
+        records = process_excel(input_path, code_column, party_column, quality_issues)
+    elif suffix == ".docx":
+        records = process_word(input_path, quality_issues)
+    elif suffix == ".doc":
+        temporary_docx = convert_legacy_doc(input_path)
+        try:
+            records = process_word(temporary_docx, quality_issues)
+        finally:
+            temporary_docx.unlink(missing_ok=True)
+    else:
+        raise ValueError(f"Formato no soportado: {input_path.name}. Use .xlsx, .docx o .doc.")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    quality_dir.mkdir(parents=True, exist_ok=True)
+    dataframe = deduplicate(records)
+    destination = output_path_for(input_path, output_dir)
+    quality_path = quality_path_for(quality_dir, input_path.stem)
+    ensure_output_available(destination)
+    ensure_output_available(quality_path)
+    export_xlsx(dataframe, destination)
+    verified_cases = load_verified_cases(quality_path)
+    review, conflicts, alerts = build_quality_reports(records, quality_issues, verified_cases)
+    quality_path = export_quality_reports(review, conflicts, alerts, quality_dir, input_path.stem, len(dataframe))
+    return {
+        "dataframe": dataframe,
+        "destination": destination,
+        "quality_path": quality_path,
+        "records": len(dataframe),
+        "review": len(review),
+        "conflicts": len(conflicts),
+        "alerts": len(alerts),
+    }
+
+
 def output_path_for(input_path: Path, output_dir: Path) -> Path:
     """Construye el nombre de salida conservando el nombre de cada documento."""
     return output_dir / f"{input_path.stem}_procesado.xlsx"
+
+
+def archive_current_workspace(input_paths: Sequence[Path]) -> list[Path]:
+    """Mueve cada archivo procesado a su propia carpeta histórica fechada."""
+    today = date.today()
+    archived_paths: list[Path] = []
+    for input_path in input_paths:
+        clean_name = re.sub(r'[^A-Za-z0-9_-]+', "_", input_path.stem).strip("._-")
+        if not clean_name:
+            raise ValueError(f"No se pudo determinar el nombre de {input_path.name}.")
+        archive_base = ARCHIVE_ROOT / f"{today:%Y}" / f"{today:%Y-%m-%d}_{clean_name}"
+        archive_root = archive_base
+        suffix = 2
+        while archive_root.exists():
+            archive_root = archive_base.with_name(f"{archive_base.name}_{suffix}")
+            suffix += 1
+
+        source_dir = archive_root / "entrada"
+        output_dir = archive_root / "salida"
+        quality_dir = output_dir / "control_calidad"
+        for directory in (source_dir, output_dir, quality_dir):
+            directory.mkdir(parents=True, exist_ok=True)
+
+        moved = 0
+        active_source = INPUT_DIRS[0] / input_path.name
+        active_output = WORKSPACE_DIR / "salida" / output_path_for(input_path, Path(".")).name
+        active_quality = QUALITY_DIR / quality_path_for(QUALITY_DIR, input_path.stem).name
+        files_to_move = (
+            (active_source, source_dir),
+            (active_output, output_dir),
+            (active_quality, quality_dir),
+        )
+        for source_file, _ in files_to_move:
+            if source_file.exists():
+                ensure_output_available(source_file)
+
+        for source_file, destination_dir in files_to_move:
+            if source_file.exists():
+                shutil.move(str(source_file), str(destination_dir / source_file.name))
+                moved += 1
+
+        if moved == 0:
+            shutil.rmtree(archive_root, ignore_errors=True)
+            raise ValueError(f"No hay archivos para archivar para {input_path.name}.")
+        archived_paths.append(archive_root)
+    return archived_paths
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -731,6 +1056,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--excel", nargs="*", type=Path, default=None, help="Archivos .xlsx de entrada. Sin este argumento, se buscan en la carpeta del script.")
     parser.add_argument("--word", nargs="*", type=Path, default=None, help="Archivos .docx de entrada. Sin este argumento, se buscan en la carpeta del script.")
     parser.add_argument("--salida", type=Path, default=None, help=f"Libro .xlsx de salida. Por defecto: {DEFAULT_OUTPUT}")
+    parser.add_argument("--trabajo", type=Path, default=None, help="Carpeta independiente del trabajo actual; contiene entrada, salida y control_calidad.")
+    parser.add_argument("--guardar-trabajo", action="store_true", help="Guarda el trabajo activo sin volver a procesarlo.")
     parser.add_argument("--columna-codigo", help="Nombre exacto de la columna de identificador del expediente en el Excel de origen.")
     parser.add_argument("--columna-parte", help="Nombre exacto de la columna de parte procesal o litigante en el Excel de origen.")
     return parser.parse_args(argv)
@@ -739,7 +1066,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def discover_inputs(args: argparse.Namespace) -> tuple[list[Path], list[Path], Path]:
     """Resuelve entradas y salida; permite ejecutar el script sin argumentos."""
     excel_paths = args.excel if args.excel is not None else _discover_files("*.xlsx")
-    word_paths = args.word if args.word is not None else [*_discover_files("*.docx"), *_discover_files("*.doc")]
+    if args.word is not None:
+        word_paths = args.word
+    elif args.excel is not None:
+        word_paths = []
+    else:
+        word_paths = [*_discover_files("*.docx"), *_discover_files("*.doc")]
     if not excel_paths and not word_paths:
         raise ValueError(f"No se encontraron archivos .xlsx, .docx o .doc en {INPUT_DIRS[0]}.")
     return list(excel_paths), list(word_paths), args.salida or DEFAULT_OUTPUT
@@ -752,7 +1084,7 @@ def _discover_files(pattern: str) -> list[Path]:
         if directory_index > 0 and any(INPUT_DIRS[0].glob(pattern)):
             continue
         for path in directory.glob(pattern):
-            if path.name.startswith("~$"):
+            if path.name.startswith("~$") or path.stem.endswith(("_procesado", "_resultado")):
                 continue
             found[str(path.resolve()).lower()] = path
     return sorted(found.values(), key=lambda path: str(path).lower())
@@ -760,6 +1092,18 @@ def _discover_files(pattern: str) -> list[Path]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.trabajo is not None:
+        configure_workspace(args.trabajo)
+    if args.guardar_trabajo:
+        try:
+            excel_paths, word_paths, _ = discover_inputs(args)
+            archive_paths = archive_current_workspace([*excel_paths, *word_paths])
+        except (OSError, ValueError) as exc:
+            print(f"Error al guardar el trabajo: {exc}", file=sys.stderr)
+            return 1
+        for archive_path in archive_paths:
+            print(f"Trabajo guardado en: {archive_path}")
+        return 0
     try:
         excel_paths, word_paths, output_path = discover_inputs(args)
         input_paths = [*excel_paths, *word_paths]
@@ -767,34 +1111,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         output_dir.mkdir(parents=True, exist_ok=True)
         total = 0
         for input_path in input_paths:
-            quality_issues: list[dict[str, str]] = []
-            if input_path.suffix.lower() == ".xlsx":
-                records = process_excel(input_path, args.columna_codigo, args.columna_parte, quality_issues)
-            elif input_path.suffix.lower() == ".docx":
-                records = process_word(input_path, quality_issues)
-            else:
-                temporary_docx = convert_legacy_doc(input_path)
-                try:
-                    records = process_word(temporary_docx, quality_issues)
-                finally:
-                    temporary_docx.unlink(missing_ok=True)
-            dataframe = deduplicate(records)
-            destination = output_path_for(input_path, output_dir)
-            ensure_output_available(destination)
-            ensure_output_available(quality_path_for(QUALITY_DIR, input_path.stem))
-            export_xlsx(dataframe, destination)
-            quality_path = quality_path_for(QUALITY_DIR, input_path.stem)
-            verified_cases = load_verified_cases(quality_path)
-            review, conflicts, alerts = build_quality_reports(records, quality_issues, verified_cases)
-            quality_path = export_quality_reports(review, conflicts, alerts, QUALITY_DIR, input_path.stem, len(dataframe))
-            total += len(dataframe)
-            print(f"OK: {len(dataframe)} registros de {input_path.name} -> {destination}")
-            print(f"  Control de calidad: {len(review)} revisión(es), {len(conflicts)} conflicto(s) -> {quality_path}")
-            print(f"  Alertas de calidad: {len(alerts)}")
+            result = process_file_to_outputs(
+                input_path,
+                output_dir,
+                QUALITY_DIR,
+                args.columna_codigo,
+                args.columna_parte,
+            )
+            total += int(result["records"])
+            print(f"OK: {result['records']} registros de {input_path.name} -> {result['destination']}")
+            print(f"  Control de calidad: {result['review']} revisión(es), {result['conflicts']} conflicto(s) -> {result['quality_path']}")
+            print(f"  Alertas de calidad: {result['alerts']}")
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
     print(f"Proceso terminado: {len(input_paths)} archivo(s), {total} registros en total.")
+    print(f"Trabajo conservado en: {WORKSPACE_DIR}")
     return 0
 
 

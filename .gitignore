@@ -3,8 +3,15 @@ entrada/*
 !entrada/.gitkeep
 salida/*
 !salida/.gitkeep
-notas/*
-!notas/.gitkeep
+control_calidad/*
+!control_calidad/.gitkeep
+archivo/*
+trabajos/*
+informes/*
+!informes/.gitkeep
+tmp/
+*.pdf
+*.docx
 
 # Entorno y archivos generados por Python/Windows.
 __pycache__/

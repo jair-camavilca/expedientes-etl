@@ -13,6 +13,14 @@ import expedientes_etl as etl  # noqa: E402
 
 
 class CodeTests(unittest.TestCase):
+    def test_accepts_independent_workspace_argument(self) -> None:
+        args = etl.parse_args(["--trabajo", "trabajos/2026/2026-09-24_clientes_lima"])
+        self.assertEqual(args.trabajo, Path("trabajos/2026/2026-09-24_clientes_lima"))
+
+    def test_accepts_save_work_argument(self) -> None:
+        args = etl.parse_args(["--guardar-trabajo"])
+        self.assertTrue(args.guardar_trabajo)
+
     def test_normalizes_correlative_to_five_digits(self) -> None:
         self.assertEqual(
             etl.normalize_code("18-2025-0-0207-JR-CI-01"),
@@ -60,6 +68,45 @@ class CodeTests(unittest.TestCase):
 
 
 class PartyTests(unittest.TestCase):
+    def test_keeps_surnames_before_comma(self) -> None:
+        self.assertEqual(etl.choose_party("CARLINI LIVELLI, Armando Victorio"), "Armando Carlini")
+        self.assertEqual(etl.choose_party("VAREA BAZO, Anibal Ministerio de Agricultura"), "Anibal Varea")
+        self.assertEqual(etl.choose_party("DE LA TORRE DELGADO, David"), "David de la Torre")
+
+    def test_flags_ambiguous_source_without_comma(self) -> None:
+        self.assertIsNotNone(etl.ambiguous_name_issue("JUAN CARLOS VASQUEZ CHAVEZ", "Juan Vasquez"))
+        self.assertIsNone(etl.ambiguous_name_issue("JUAN DE LA CRUZ", "Juan De La Cruz"))
+
+    def test_extracts_first_name_and_first_surname_without_comma(self) -> None:
+        self.assertEqual(
+            etl.choose_party("JUAN CARLOS VASQUEZ CHAVEZ"),
+            "Juan Vasquez",
+        )
+        self.assertEqual(
+            etl.choose_party("CARLOS DIONICIO MINAYA"),
+            "Carlos Dionicio",
+        )
+        self.assertEqual(
+            etl.choose_party("ELDA ROSA VARGAS DAVALOS"),
+            "Elda Vargas",
+        )
+        self.assertEqual(
+            etl.choose_party("CONSUELO LUZ GONZALES"),
+            "Consuelo Gonzales",
+        )
+
+    def test_keeps_compound_surname_without_comma(self) -> None:
+        self.assertEqual(etl.choose_party("JUAN DE LA CRUZ"), "Juan de la Cruz")
+
+    def test_keeps_two_tokens_without_comma(self) -> None:
+        self.assertEqual(etl.choose_party("LUIS ALBERTO"), "Luis Alberto")
+
+    def test_skips_initial_between_name_and_surname(self) -> None:
+        self.assertEqual(
+            etl.choose_party("BLANCA I. TINOCO BENDEZU"),
+            "Blanca Tinoco",
+        )
+
     def test_word_entity_keeps_parenthetical_designation(self) -> None:
         self.assertEqual(
             etl._block_party("INVERSIONES PLATINUM (DIEGO FARAH)\nCon la Municipalidad"),
@@ -67,28 +114,28 @@ class PartyTests(unittest.TestCase):
         )
 
     def test_keeps_two_surnames_and_discards_given_names(self) -> None:
-        self.assertEqual(etl.choose_party("Carlini Livelli, Armando Victorio"), "Carlini Livelli")
-        self.assertEqual(etl.choose_party("Espinoza, Guillermo"), "Espinoza")
+        self.assertEqual(etl.choose_party("Carlini Livelli, Armando Victorio"), "Armando Carlini")
+        self.assertEqual(etl.choose_party("Espinoza, Guillermo"), "Guillermo Espinoza")
 
     def test_keeps_compound_surname_with_de(self) -> None:
         self.assertEqual(
             etl.choose_party("Rivera de Gonzales, Margarita Teresa"),
-            "Rivera De Gonzales",
+            "Margarita Rivera",
         )
         self.assertEqual(
             etl.choose_party("Gagliuffi de Castagnino, Blanca Teresa"),
-            "Gagliuffi De Castagnino",
+            "Blanca Gagliuffi",
         )
         self.assertEqual(
             etl.choose_party("DE LOS HEROS BALLEN DE VAN WALLEGHEM, Rosa Maria"),
-            "De Los Heros Ballen",
+            "Rosa de los Heros",
         )
 
     def test_removes_civil_status_abbreviation_from_surname(self) -> None:
         self.assertEqual(etl.choose_party("CABALLERO VDA"), "Caballero")
         self.assertEqual(
             etl.choose_party("CABALLERO VDA. DE GALVEZ, Felisa Clementina"),
-            "Caballero",
+            "Felisa Caballero",
         )
 
     def test_succession_is_preserved_as_designation(self) -> None:
@@ -106,6 +153,20 @@ class PartyTests(unittest.TestCase):
 
 
 class ConflictTests(unittest.TestCase):
+    def test_flags_atypical_codes_without_changing_them(self) -> None:
+        self.assertEqual(
+            etl.code_quality_issue("17606-20226-0-1801-JR-LA-23"),
+            "Año del código atípico; confirmar en la fuente",
+        )
+        self.assertEqual(
+            etl.code_quality_issue("00170-2020--0-1217-JR-LA-01"),
+            "Código con segmento vacío; confirmar en la fuente",
+        )
+        self.assertEqual(
+            etl.code_quality_issue("00175-2025-1"),
+            "Código con estructura incompleta; confirmar en la fuente",
+        )
+
     def test_only_exact_code_party_duplicates_are_removed(self) -> None:
         records = [
             etl.Record("00001-2020-0-0001-JR-CI-01", "Rivera"),

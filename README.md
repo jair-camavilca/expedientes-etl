@@ -5,7 +5,7 @@ Herramienta de procesamiento de datos judiciales que transforma archivos Excel y
 El sistema extrae y estandariza dos campos de salida:
 
 - `codigo`: identificador judicial del expediente, normalizado.
-- `parte`: parte procesal; contiene los dos primeros apellidos de la persona natural o la razón social de la entidad.
+- `parte`: parte procesal; contiene el primer nombre y el primer apellido de la persona natural o la razón social de la entidad.
 
 El proyecto está diseñado para ejecutarse localmente. Los documentos judiciales permanecen en el equipo del usuario y no forman parte del repositorio.
 
@@ -16,7 +16,8 @@ El proyecto está diseñado para ejecutarse localmente. Los documentos judiciale
 - Normalización del correlativo inicial del expediente a cinco dígitos.
 - Conservación de expedientes válidos con formatos atípicos o abreviados.
 - Expansión de subexpedientes expresados como `0/1/2`.
-- Extracción conservadora de dos apellidos, descartando nombres de pila y texto procesal secundario.
+- Extracción conservadora del primer nombre y primer apellido, descartando nombres adicionales y texto procesal secundario.
+- Detección de nombres sin coma con varios tokens para enviarlos a revisión manual cuando la separación pueda ser ambigua.
 - Conservación de razones sociales y entidades públicas.
 - Conservación de partes distintas cuando un mismo código presenta un conflicto.
 - Registro visible de expedientes faltantes como `NO DEFINIDO`.
@@ -51,10 +52,15 @@ Si ya existe una instalación funcional de Python, también puede ejecutarse con
 
 ## Uso recomendado
 
-1. Coloque los archivos `.xlsx`, `.docx` o `.doc` en `entrada`.
+### Interfaz web local
+
+Ejecute `ejecutar_expedientes_web.bat` para abrir una interfaz local en el navegador. Permite cargar varios archivos, procesarlos, consultar un resumen y descargar los resultados junto con el control de calidad. También puede utilizar `ejecutar_expedientes_etl.bat` para el flujo tradicional mediante las carpetas `entrada` y `salida`.
+
+1. Coloque los archivos `.xlsx`, `.docx` o `.doc` en `entrada`; los Excel pueden conservar títulos, columnas vacías, filas vacías y encabezados repetidos.
 2. Ejecute `ejecutar_expedientes_etl.bat` con doble clic.
-3. Revise los archivos generados en `salida`.
-4. Consulte los controles en `notas`.
+3. Revise los archivos generados en `salida` y el control en `salida/control_calidad`.
+4. Cuando termine la revisión, responda `S` a la pregunta del mismo `.bat` para guardar el trabajo, o `N` para conservarlo en las carpetas activas.
+5. Si responde `S`, cada archivo procesado se moverá automáticamente a su propia carpeta fechada dentro de `trabajos`.
 
 El programa no combina documentos distintos: crea un Excel de salida por cada archivo de entrada.
 
@@ -72,6 +78,8 @@ python expedientes_etl.py `
   --excel C:\ruta\casos.xlsx `
   --word C:\ruta\resumen.docx
 ```
+
+Si se indica únicamente `--excel`, se procesan solo los Excel indicados. Si se indica únicamente `--word`, se procesan solo los Word indicados. Sin estos parámetros, el programa procesa los archivos compatibles encontrados en `entrada`.
 
 Si los encabezados del Excel no son detectados automáticamente:
 
@@ -94,18 +102,29 @@ No son los nombres de las columnas finales. La salida siempre contiene exactamen
 
 ```text
 expedientes-etl/
-├── entrada/                    # Archivos judiciales locales; no se versiona su contenido
-├── salida/                     # Excels procesados; no se versiona su contenido
-├── notas/                      # Reportes auxiliares; no se versionan
+├── entrada/                    # Archivos del trabajo activo
+├── salida/                     # Resultados y control del trabajo activo
+│   └── control_calidad/        # Controles del trabajo activo
+├── trabajos/                   # Trabajos ya revisados y archivados
+│   └── AAAA/
+│       └── AAAA-MM-DD_nombre/
+│           ├── entrada/
+│           ├── salida/
+│           └── control_calidad/
+├── config/                     # Catálogos editables del procesamiento
+│   ├── entidades_juridicas.txt
+│   └── nombres_persona.txt
 ├── expedientes_etl.py           # Aplicación principal
-├── entidades_juridicas.txt      # Catálogo editable de términos institucionales
 ├── requirements.txt             # Dependencias Python
 ├── README.md                    # Documentación profesional
+├── GUIA_USUARIO.md              # Instrucciones para ejecutar el programa
 ├── README_DESARROLLO.md         # Notas internas, ignoradas por Git
 ├── tests/                       # Pruebas unitarias e integración
 ├── ejecutar_expedientes_etl.bat # Lanzador para Windows
 └── .gitignore
 ```
+
+La organización por año permite conservar más de veinte trabajos sin mezclar sus archivos ni generar una lista difícil de revisar. `entrada` y `salida` funcionan como bandeja activa; dentro de `salida/control_calidad` se guardan los controles y `trabajos` conserva el historial final, con una carpeta independiente por archivo procesado.
 
 ## Archivos de salida
 
@@ -121,9 +140,12 @@ Además, se genera un libro de control de calidad con:
 
 - `ALTA`: requiere completar o corregir información en la fuente. Incluye `NO DEFINIDO`.
 - `MEDIA`: requiere confirmar que la extracción sea correcta.
+- `BAJA`: observación menor que no bloquea el resultado; queda disponible para futuras reglas y actualmente no se genera automáticamente.
 - `VERIFICADO`: se aplica a una alerta MEDIA confirmada y evita que vuelva a mostrarse como pendiente en la siguiente ejecución.
 
-Marcar un caso como `VERIFICADO` no modifica el Excel principal ni elimina datos judiciales.
+El nivel mide la importancia de la alerta; el estado indica si ya fue revisada. No son lo mismo. Marcar un caso como `VERIFICADO` no modifica el Excel principal ni elimina datos judiciales.
+
+La recomendación es no cambiar manualmente el nivel para ocultar una alerta. Si un caso se revisó en la fuente, marque `VERIFICADO`. Si una regla debe cambiar para todos los casos futuros, se modifica el código y se agrega una prueba de regresión.
 
 ## Reglas de transformación
 
@@ -134,16 +156,22 @@ Marcar un caso como `VERIFICADO` no modifica el Excel principal ni elimina datos
 - Los duplicados exactos de `codigo + parte` se eliminan.
 - Si un código tiene partes distintas, se conservan todas y se informa el conflicto.
 - Un expediente ausente no se inventa: se registra como `NO DEFINIDO`.
+- Los códigos incompletos o atípicos se conservan tal como aparecen y se envían a revisión manual.
 
 ### Partes
 
-- Para personas naturales se conservan los dos primeros apellidos principales.
-- Se descartan nombres de pila, apodos, contrapartes y texto procesal secundario.
+- Para nombres sin coma se prioriza primer nombre + primer apellido; si existen dos nombres frecuentes, se toma el primer apellido posterior.
+- Cuando una fuente sin coma contiene varios nombres y apellidos posibles, se conserva una salida conservadora y se genera una alerta MEDIA para confirmación.
+- Cuando la fuente usa `APELLIDOS, Nombres`, se muestra el primer nombre seguido del primer apellido, conservando partículas como `De La Torre`.
+- Se descartan apodos, contrapartes y texto procesal secundario.
 - Se conservan apellidos compuestos cuando forman parte del nombre principal.
 - Para entidades se conserva la razón social detectada.
 - En Word, cada expediente hereda el titular correspondiente de su bloque o sección.
 
-El archivo `entidades_juridicas.txt` permite agregar términos institucionales sin editar el código. Debe contener un término por línea.
+En Excel, las filas completamente vacías, los títulos de sección y los encabezados repetidos se ignoran automáticamente. Las columnas que no correspondan al código o a la parte, como `ESP. LEGAL`, no se incorporan a la salida.
+
+El archivo `config/entidades_juridicas.txt` permite agregar términos institucionales sin editar el código. Debe contener un término por línea.
+El archivo `config/nombres_persona.txt` solo apoya la interpretación de fuentes sin coma; no contiene apellidos ni permite inventar información. Cuando el formato es ambiguo, el caso debe confirmarse en la fuente.
 
 ## Pruebas
 
