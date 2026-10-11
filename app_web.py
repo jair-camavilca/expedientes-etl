@@ -124,19 +124,18 @@ st.write("Carga archivos Excel o Word y obtén un resultado ordenado con los dat
 st.caption("Carga únicamente archivos autorizados. Se procesan temporalmente y las sesiones antiguas se eliminan automáticamente.")
 _remove_expired_sessions()
 
-st.subheader("Carga de archivos")
-st.caption("Seleccione uno o varios archivos Excel (.xlsx) o Word (.docx) para iniciar el procesamiento.")
+st.subheader("Seleccionar archivos")
+st.caption("Selecciona uno o varios archivos Excel (.xlsx) o Word (.docx).")
 upload_column, action_column = st.columns([4, 1])
 with upload_column:
     uploaded_files = st.file_uploader(
-        "Archivos de origen",
+        "Archivos",
         type=["xlsx", "docx"],
         accept_multiple_files=True,
         help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
     )
 with action_column:
-    st.caption("Procesamiento")
-    process_clicked = st.button("Iniciar procesamiento", type="primary", disabled=not uploaded_files)
+    process_clicked = st.button("Procesar", type="primary", disabled=not uploaded_files)
 
 if process_clicked:
     session_name = f"{datetime.now():%Y%m%d_%H%M%S}_{uuid4().hex[:8]}"
@@ -146,7 +145,7 @@ if process_clicked:
     results: list[dict[str, object]] = []
     progress_column, status_column = st.columns([3, 2])
     with progress_column:
-        progress = st.progress(0, text="Procesamiento en curso...")
+        progress = st.progress(0, text="Procesando archivos...")
     with status_column:
         status_message = st.empty()
     for index, uploaded_file in enumerate(uploaded_files, start=1):
@@ -154,7 +153,7 @@ if process_clicked:
             source = _save_upload(uploaded_file, work_dir)
             result = _process_file(source, work_dir)
             results.append(result)
-            status_message.success(f"Procesamiento completado: {index} de {len(uploaded_files)}")
+            status_message.success(f"Listo: {index} de {len(uploaded_files)}")
         except (OSError, RuntimeError, ValueError) as exc:
             status_message.error(f"Error durante el procesamiento de {uploaded_file.name}: {exc}")
         progress.progress(index / len(uploaded_files), text=f"Procesando archivo {index} de {len(uploaded_files)}")
@@ -162,9 +161,9 @@ if process_clicked:
     if results:
         result_title_column, result_count_column = st.columns([3, 1])
         with result_title_column:
-            st.subheader("Resultados del procesamiento")
+            st.subheader("Resultados")
         with result_count_column:
-            st.metric("Documentos procesados", len(results))
+            st.metric("Archivos", len(results))
         st.dataframe(
             [
                 {
@@ -178,13 +177,14 @@ if process_clicked:
             ],
             hide_index=True,
         )
-        st.subheader("Archivos disponibles")
+        st.subheader("Descargas")
         download_column, zip_column = st.columns(2)
         with download_column:
             for result in results:
                 output_path = Path(result["salida"])
+                st.caption(output_path.name)
                 st.download_button(
-                    f"Descargar resultado: {output_path.name}",
+                    "Descargar Excel",
                     data=output_path.read_bytes(),
                     file_name=output_path.name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -192,11 +192,11 @@ if process_clicked:
                 )
         with zip_column:
             st.download_button(
-                "Descargar paquete de resultados",
+                "Descargar ZIP",
                 data=_zip_results(results),
                 file_name=f"expedientes_etl_resultados_{session_name}.zip",
                 mime="application/zip",
                 key=f"zip-{session_name}",
                 help="Incluye los resultados y los reportes de control de calidad.",
             )
-        st.caption("Los archivos generados se conservan temporalmente durante la sesión.")
+        st.caption("Los resultados estarán disponibles durante esta sesión.")
