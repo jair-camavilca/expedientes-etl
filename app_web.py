@@ -86,7 +86,7 @@ st.markdown(
     """
     <style>
     .stApp {
-        background: linear-gradient(135deg, #0b1220 0%, #111827 52%, #0f172a 100%);
+        background: linear-gradient(135deg, #f7fafc 0%, #eef4f8 52%, #e6eff6 100%);
     }
     .block-container {
         max-width: 1100px;
@@ -96,6 +96,7 @@ st.markdown(
     h1 {
         letter-spacing: -0.04em;
         margin-bottom: 0.25rem;
+        color: #17324d;
     }
     div[data-testid="stAlert"] {
         padding: 0.55rem 0.85rem;
@@ -103,6 +104,9 @@ st.markdown(
     }
     div[data-testid="stFileUploader"] {
         padding-top: 0.1rem;
+    }
+    div[data-testid="stAlert"] {
+        border-radius: 0.6rem;
     }
     </style>
     """,
