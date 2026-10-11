@@ -124,6 +124,13 @@ expedientes-etl/
 ├── config/                     # Catálogos editables del procesamiento
 │   ├── entidades_juridicas.txt
 │   └── nombres_persona.txt
+├── core/                       # Capas reutilizables del procesamiento
+│   ├── modelos.py              # Modelos de datos
+│   ├── lectores.py             # Lectura de fuentes
+│   ├── normalizacion.py        # Reglas de normalización
+│   ├── calidad.py              # Alertas y controles
+│   ├── exportacion.py          # Generación de Excel
+│   └── servicio.py             # Servicio común para CLI y web
 ├── expedientes_etl.py           # Aplicación principal
 ├── requirements.txt             # Dependencias Python
 ├── README.md                    # Documentación profesional
@@ -135,6 +142,10 @@ expedientes-etl/
 ```
 
 La organización por año permite conservar más de veinte trabajos sin mezclar sus archivos ni generar una lista difícil de revisar. `entrada` y `salida` funcionan como bandeja activa; dentro de `salida/control_calidad` se guardan los controles y `trabajos` conserva el historial final, con una carpeta independiente por archivo procesado.
+
+## Arquitectura modular
+
+La carpeta `core` separa las responsabilidades principales: los lectores reciben las fuentes, las reglas de normalización preparan los datos, el control de calidad identifica casos pendientes y los exportadores generan los libros Excel. `servicio.py` concentra el flujo compartido por la ejecución tradicional y la interfaz web. `expedientes_etl.py` se conserva como punto de entrada compatible para los archivos `.bat`, la terminal y las pruebas existentes.
 
 ## Archivos de salida
 

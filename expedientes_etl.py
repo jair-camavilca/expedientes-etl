@@ -15,7 +15,6 @@ import sys
 import unicodedata
 import xml.etree.ElementTree as ET
 import zipfile
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
@@ -25,6 +24,8 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
+
+from core.modelos import Record
 
 
 COURT_CODE_RE = re.compile(
@@ -86,12 +87,6 @@ def configure_workspace(workspace_dir: Path) -> None:
     INPUT_DIRS = (WORKSPACE_DIR / "entrada",)
     for directory in (INPUT_DIRS[0], DEFAULT_OUTPUT.parent, QUALITY_DIR):
         directory.mkdir(parents=True, exist_ok=True)
-
-
-@dataclass(frozen=True)
-class Record:
-    codigo: str
-    parte: str
 
 
 def normalize_text(value: object) -> str:

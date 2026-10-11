@@ -19,7 +19,7 @@ SESSION_MAX_AGE_SECONDS = 2 * 60 * 60
 if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
-import expedientes_etl as etl  # noqa: E402
+from core.servicio import process_file_to_outputs  # noqa: E402
 
 
 def _save_upload(uploaded_file, work_dir: Path) -> Path:
@@ -51,7 +51,7 @@ def _remove_expired_sessions() -> None:
 def _process_file(source: Path, work_dir: Path) -> dict[str, object]:
     output_dir = work_dir / "salida"
     quality_dir = output_dir / "control_calidad"
-    result = etl.process_file_to_outputs(source, output_dir, quality_dir)
+    result = process_file_to_outputs(source, output_dir, quality_dir)
     return {
         "nombre": source.name,
         "salida": result["destination"],
