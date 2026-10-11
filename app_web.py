@@ -138,22 +138,19 @@ st.markdown(
 with header_column:
     st.title("Expedientes ETL")
 st.write("Carga archivos Excel o Word y obtén un resultado ordenado con los datos principales del expediente.")
-st.caption("Uso seguro: utiliza archivos de prueba o autorizados. No subas documentos judiciales reales ni información confidencial.")
+st.caption("Uso seguro: carga únicamente archivos autorizados para tu trabajo.")
 st.caption("Los archivos se procesan temporalmente y las sesiones antiguas se eliminan automáticamente.")
 _remove_expired_sessions()
 
 st.subheader("Seleccionar archivos")
 st.caption("Puedes cargar uno o varios archivos Excel (.xlsx) o Word (.docx).")
-upload_column, action_column = st.columns([4, 1])
-with upload_column:
-    uploaded_files = st.file_uploader(
-        "Archivos de entrada",
-        type=["xlsx", "docx"],
-        accept_multiple_files=True,
-        help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
-    )
-with action_column:
-    process_clicked = st.button("Procesar archivos", type="primary", disabled=not uploaded_files)
+uploaded_files = st.file_uploader(
+    "Archivos de entrada",
+    type=["xlsx", "docx"],
+    accept_multiple_files=True,
+    help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
+)
+process_clicked = st.button("Procesar archivos", type="primary", disabled=not uploaded_files)
 
 if process_clicked:
     session_name = f"{datetime.now():%Y%m%d_%H%M%S}_{uuid4().hex[:8]}"
