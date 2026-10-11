@@ -11,7 +11,11 @@ informes/*
 !informes/.gitkeep
 tmp/
 *.pdf
+*.xlsx
+*.xls
+*.doc
 *.docx
+*.zip
 
 # Entorno y archivos generados por Python/Windows.
 __pycache__/
@@ -20,6 +24,7 @@ __pycache__/
 venv/
 env/
 .env
+.streamlit/secrets.toml
 *.log
 Thumbs.db
 Desktop.ini
