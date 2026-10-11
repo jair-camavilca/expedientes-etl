@@ -72,7 +72,7 @@ El programa no combina documentos distintos: crea un Excel de salida por cada ar
 
 ### Publicación web opcional
 
-La interfaz puede publicarse como demostración en Streamlit Community Cloud. La versión en línea debe utilizar únicamente archivos ficticios o autorizados. En la nube se aceptan `.xlsx` y `.docx`; el soporte para `.doc` antiguo se mantiene en el flujo local de Windows porque requiere Microsoft Word.
+La interfaz puede publicarse como demostración en Streamlit Community Cloud. La versión en línea debe utilizar únicamente archivos ficticios o autorizados. En la nube se aceptan `.xlsx` y `.docx`, con un límite de 50 MB por archivo; el soporte para `.doc` antiguo se mantiene en el flujo local de Windows porque requiere Microsoft Word.
 
 También puede ejecutarse desde PowerShell:
 

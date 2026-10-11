@@ -15,6 +15,8 @@ import streamlit as st
 PROJECT_DIR = Path(__file__).resolve().parent
 TMP_ROOT = PROJECT_DIR / "tmp" / "web"
 SESSION_MAX_AGE_SECONDS = 2 * 60 * 60
+MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024
+ALLOWED_UPLOAD_SUFFIXES = {".xlsx", ".docx"}
 
 if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
@@ -23,9 +25,15 @@ from core.servicio import process_file_to_outputs  # noqa: E402
 
 
 def _save_upload(uploaded_file, work_dir: Path) -> Path:
+    original_name = Path(uploaded_file.name).name
+    suffix = Path(original_name).suffix.lower()
+    if suffix not in ALLOWED_UPLOAD_SUFFIXES:
+        raise ValueError("solo se admiten archivos .xlsx y .docx en la versión web")
+    if uploaded_file.size > MAX_UPLOAD_SIZE_BYTES:
+        raise ValueError("el archivo supera el límite permitido de 50 MB")
+
     source_dir = work_dir / "entrada"
     source_dir.mkdir(parents=True, exist_ok=True)
-    original_name = Path(uploaded_file.name).name
     destination = source_dir / original_name
     if destination.exists():
         destination = source_dir / f"{Path(original_name).stem}_{uuid4().hex[:8]}{Path(original_name).suffix}"

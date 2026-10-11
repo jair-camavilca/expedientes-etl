@@ -14,7 +14,7 @@ Para una operación más sencilla, cierre Excel o Word y ejecute `ejecutar_exped
 
 La interfaz local funciona en la computadora del usuario. Si se publica una demostración en Streamlit Community Cloud, los archivos se procesan temporalmente en el servicio; utilice únicamente archivos ficticios o autorizados y no cargue documentos judiciales confidenciales.
 
-La versión web acepta `.xlsx` y `.docx`. Para archivos `.doc` antiguos, utilice el flujo local de Windows, que requiere Microsoft Word instalado.
+La versión web acepta `.xlsx` y `.docx`, con un límite de 50 MB por archivo. Para archivos `.doc` antiguos, utilice el flujo local de Windows, que requiere Microsoft Word instalado.
 
 ## Archivos aceptados
 
