@@ -8,11 +8,13 @@ import sys
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
 
 import streamlit as st
 
 PROJECT_DIR = Path(__file__).resolve().parent
 TMP_ROOT = PROJECT_DIR / "tmp" / "web"
+SESSION_MAX_AGE_SECONDS = 2 * 60 * 60
 
 if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
@@ -23,9 +25,27 @@ import expedientes_etl as etl  # noqa: E402
 def _save_upload(uploaded_file, work_dir: Path) -> Path:
     source_dir = work_dir / "entrada"
     source_dir.mkdir(parents=True, exist_ok=True)
-    destination = source_dir / Path(uploaded_file.name).name
+    original_name = Path(uploaded_file.name).name
+    destination = source_dir / original_name
+    if destination.exists():
+        destination = source_dir / f"{Path(original_name).stem}_{uuid4().hex[:8]}{Path(original_name).suffix}"
     destination.write_bytes(uploaded_file.getbuffer())
     return destination
+
+
+def _remove_expired_sessions() -> None:
+    """Elimina sesiones temporales antiguas de la aplicación web."""
+    if not TMP_ROOT.exists():
+        return
+    now = datetime.now().timestamp()
+    for session_dir in TMP_ROOT.iterdir():
+        if not session_dir.is_dir():
+            continue
+        try:
+            if now - session_dir.stat().st_mtime > SESSION_MAX_AGE_SECONDS:
+                shutil.rmtree(session_dir)
+        except OSError:
+            continue
 
 
 def _process_file(source: Path, work_dir: Path) -> dict[str, object]:
@@ -55,18 +75,20 @@ def _zip_results(results: list[dict[str, object]]) -> bytes:
 
 st.set_page_config(page_title="Expedientes ETL", page_icon="📄", layout="wide")
 st.title("Expedientes ETL")
-st.write("Procesa archivos Excel y Word localmente y genera resultados simplificados.")
-st.info("Los archivos se procesan en esta computadora; no se envían a un servicio externo.")
+st.write("Procesa archivos Excel y Word y genera resultados simplificados.")
+st.warning("No cargue documentos judiciales reales ni información confidencial. Use archivos ficticios o autorizados para esta demostración.")
+st.info("Los archivos se procesan temporalmente para generar la descarga y las sesiones antiguas se eliminan automáticamente.")
+_remove_expired_sessions()
 
 uploaded_files = st.file_uploader(
     "Seleccione uno o varios archivos",
-    type=["xlsx", "docx", "doc"],
+    type=["xlsx", "docx"],
     accept_multiple_files=True,
-    help="Se aceptan archivos Excel, Word moderno y Word antiguo.",
+    help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
 )
 
 if st.button("Procesar archivos", type="primary", disabled=not uploaded_files):
-    session_name = datetime.now().strftime("%Y%m%d_%H%M%S")
+    session_name = f"{datetime.now():%Y%m%d_%H%M%S}_{uuid4().hex[:8]}"
     work_dir = TMP_ROOT / session_name
     if work_dir.exists():
         shutil.rmtree(work_dir)

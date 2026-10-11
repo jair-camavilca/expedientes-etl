@@ -70,6 +70,10 @@ Ejecute `ejecutar_expedientes_web.bat` para abrir una interfaz local en el naveg
 
 El programa no combina documentos distintos: crea un Excel de salida por cada archivo de entrada.
 
+### Publicación web opcional
+
+La interfaz puede publicarse como demostración en Streamlit Community Cloud. La versión en línea debe utilizar únicamente archivos ficticios o autorizados. En la nube se aceptan `.xlsx` y `.docx`; el soporte para `.doc` antiguo se mantiene en el flujo local de Windows porque requiere Microsoft Word.
+
 También puede ejecutarse desde PowerShell:
 
 ```powershell

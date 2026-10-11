@@ -12,7 +12,9 @@
 
 Para una operación más sencilla, cierre Excel o Word y ejecute `ejecutar_expedientes_web.bat`. Se abrirá una página local en el navegador. Seleccione uno o varios archivos, pulse **Procesar archivos** y descargue el resultado Excel o el archivo ZIP con el control de calidad.
 
-La interfaz funciona en la computadora del usuario. Los archivos no se cargan a Internet. Para utilizarla por primera vez, instale las dependencias indicadas en `requirements.txt`.
+La interfaz local funciona en la computadora del usuario. Si se publica una demostración en Streamlit Community Cloud, los archivos se procesan temporalmente en el servicio; utilice únicamente archivos ficticios o autorizados y no cargue documentos judiciales confidenciales.
+
+La versión web acepta `.xlsx` y `.docx`. Para archivos `.doc` antiguos, utilice el flujo local de Windows, que requiere Microsoft Word instalado.
 
 ## Archivos aceptados
 
