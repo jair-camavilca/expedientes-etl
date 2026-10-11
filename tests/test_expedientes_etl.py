@@ -21,6 +21,17 @@ class CodeTests(unittest.TestCase):
         args = etl.parse_args(["--guardar-trabajo"])
         self.assertTrue(args.guardar_trabajo)
 
+    def test_does_not_duplicate_processed_suffix(self) -> None:
+        output_dir = Path("salida")
+        self.assertEqual(
+            etl.output_path_for(Path("clientes.xlsx"), output_dir),
+            output_dir / "clientes_procesado.xlsx",
+        )
+        self.assertEqual(
+            etl.output_path_for(Path("clientes_procesado.xlsx"), output_dir),
+            output_dir / "clientes_procesado.xlsx",
+        )
+
     def test_normalizes_correlative_to_five_digits(self) -> None:
         self.assertEqual(
             etl.normalize_code("18-2025-0-0207-JR-CI-01"),

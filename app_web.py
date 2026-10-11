@@ -145,7 +145,7 @@ if process_clicked:
         progress.progress(index / len(uploaded_files), text=f"Procesando {index} de {len(uploaded_files)}")
 
     if results:
-        st.subheader("3. Revisa y descarga los resultados")
+        st.subheader("Resultados y descargas")
         st.success(f"Se procesaron {len(results)} archivo(s) correctamente.")
         st.dataframe(
             [

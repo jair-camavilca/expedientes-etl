@@ -997,7 +997,10 @@ def process_file_to_outputs(
 
 def output_path_for(input_path: Path, output_dir: Path) -> Path:
     """Construye el nombre de salida conservando el nombre de cada documento."""
-    return output_dir / f"{input_path.stem}_procesado.xlsx"
+    stem = input_path.stem
+    if not stem.lower().endswith("_procesado"):
+        stem = f"{stem}_procesado"
+    return output_dir / f"{stem}.xlsx"
 
 
 def archive_current_workspace(input_paths: Sequence[Path]) -> list[Path]:
