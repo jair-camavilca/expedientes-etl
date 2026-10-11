@@ -126,7 +126,7 @@ _remove_expired_sessions()
 
 st.subheader("Seleccionar archivos")
 st.caption("Selecciona uno o varios archivos Excel (.xlsx) o Word (.docx).")
-upload_column, action_column = st.columns([4, 1])
+upload_column, action_column = st.columns([4, 1], vertical_alignment="bottom")
 with upload_column:
     uploaded_files = st.file_uploader(
         "Archivos",
@@ -159,7 +159,7 @@ if process_clicked:
         progress.progress(index / len(uploaded_files), text=f"Procesando archivo {index} de {len(uploaded_files)}")
 
     if results:
-        result_title_column, result_count_column = st.columns([3, 1])
+        result_title_column, result_count_column = st.columns([3, 1], vertical_alignment="bottom")
         with result_title_column:
             st.subheader("Resultados")
         with result_count_column:
