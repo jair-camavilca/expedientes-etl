@@ -160,11 +160,7 @@ if process_clicked:
         progress.progress(index / len(uploaded_files), text=f"Procesando archivo {index} de {len(uploaded_files)}")
 
     if results:
-        result_title_column, result_count_column = st.columns([3, 1], vertical_alignment="bottom")
-        with result_title_column:
-            st.subheader("Resultados")
-        with result_count_column:
-            st.metric("Archivos", len(results))
+        st.subheader("Resultados")
         st.dataframe(
             [
                 {
