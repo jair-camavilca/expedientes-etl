@@ -188,6 +188,7 @@ if process_clicked:
                     key=f"output-{output_path.name}",
                 )
         with zip_column:
+            st.caption("Paquete con resultados y controles")
             st.download_button(
                 "Descargar ZIP",
                 data=_zip_results(results),
