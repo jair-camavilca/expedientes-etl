@@ -4,7 +4,7 @@
 [![Excel](https://img.shields.io/badge/Excel-217346?style=for-the-badge&logo=microsoftexcel&logoColor=white)](https://www.microsoft.com/microsoft-365/excel)
 [![Word](https://img.shields.io/badge/Word-2B579A?style=for-the-badge&logo=microsoftword&logoColor=white)](https://www.microsoft.com/microsoft-365/word)
 ![ETL](https://img.shields.io/badge/Proceso-ETL-6A1B9A?style=for-the-badge)
-![Version](https://img.shields.io/badge/Version-1.1.0-2EA44F?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-1.2.0-2EA44F?style=for-the-badge)
 
 Herramienta de procesamiento de datos judiciales que transforma archivos Excel y Word en libros Excel uniformes para alimentar sistemas de consulta judicial.
 
