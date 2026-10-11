@@ -81,20 +81,23 @@ def _zip_results(results: list[dict[str, object]]) -> bytes:
     return buffer.getvalue()
 
 
-st.set_page_config(page_title="Expedientes ETL", page_icon="📄", layout="wide")
+st.set_page_config(page_title="Expedientes ETL", page_icon=":material/description:", layout="wide")
 st.title("Expedientes ETL")
 st.write("Carga archivos Excel o Word y obtén un resultado ordenado con los datos principales del expediente.")
 st.warning("Por seguridad, utiliza únicamente archivos de prueba o autorizados. No subas documentos judiciales reales ni información confidencial.")
 st.info("Los archivos se procesan de forma temporal para generar los resultados y las sesiones antiguas se eliminan automáticamente.")
 _remove_expired_sessions()
 
+st.subheader("1. Selecciona los archivos")
+st.caption("Puedes cargar uno o varios archivos Excel (.xlsx) o Word (.docx).")
 uploaded_files = st.file_uploader(
-    "Seleccione uno o varios archivos",
+    "Archivos de entrada",
     type=["xlsx", "docx"],
     accept_multiple_files=True,
     help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
 )
 
+st.subheader("2. Procesa la información")
 if st.button("Procesar archivos", type="primary", disabled=not uploaded_files):
     session_name = f"{datetime.now():%Y%m%d_%H%M%S}_{uuid4().hex[:8]}"
     work_dir = TMP_ROOT / session_name
@@ -113,7 +116,8 @@ if st.button("Procesar archivos", type="primary", disabled=not uploaded_files):
         progress.progress(index / len(uploaded_files), text=f"Procesando {index} de {len(uploaded_files)}")
 
     if results:
-        st.subheader("Resumen del procesamiento")
+        st.subheader("3. Revisa y descarga los resultados")
+        st.success(f"Se procesaron {len(results)} archivo(s) correctamente.")
         st.dataframe(
             [
                 {
@@ -125,7 +129,6 @@ if st.button("Procesar archivos", type="primary", disabled=not uploaded_files):
                 }
                 for result in results
             ],
-            use_container_width=True,
             hide_index=True,
         )
         st.subheader("Descargas")
