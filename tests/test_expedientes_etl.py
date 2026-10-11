@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))
@@ -13,6 +14,12 @@ import expedientes_etl as etl  # noqa: E402
 
 
 class CodeTests(unittest.TestCase):
+    def test_rejects_document_without_processable_records(self) -> None:
+        source = Path("documento_sin_expedientes.docx")
+        with patch.object(etl, "process_word", return_value=[]):
+            with self.assertRaisesRegex(ValueError, "no contiene registros procesables"):
+                etl.process_file_to_outputs(source, Path("salida_prueba"), Path("control_prueba"))
+
     def test_accepts_independent_workspace_argument(self) -> None:
         args = etl.parse_args(["--trabajo", "trabajos/2026/2026-09-24_clientes_lima"])
         self.assertEqual(args.trabajo, Path("trabajos/2026/2026-09-24_clientes_lima"))

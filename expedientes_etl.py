@@ -973,9 +973,14 @@ def process_file_to_outputs(
     else:
         raise ValueError(f"Formato no soportado: {input_path.name}. Use .xlsx, .docx o .doc.")
 
+    dataframe = deduplicate(records)
+    if dataframe.empty:
+        raise ValueError(
+            f"El archivo {input_path.name} no contiene registros procesables. "
+            "Verifique que incluya expedientes y partes reconocibles."
+        )
     output_dir.mkdir(parents=True, exist_ok=True)
     quality_dir.mkdir(parents=True, exist_ok=True)
-    dataframe = deduplicate(records)
     destination = output_path_for(input_path, output_dir)
     quality_path = quality_path_for(quality_dir, input_path.stem)
     ensure_output_available(destination)
