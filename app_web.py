@@ -197,4 +197,3 @@ if process_clicked:
                 key=f"zip-{session_name}",
                 help="Incluye los resultados y los reportes de control de calidad.",
             )
-        st.caption("Los resultados estarán disponibles durante esta sesión.")
