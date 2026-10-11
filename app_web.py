@@ -82,7 +82,9 @@ def _zip_results(results: list[dict[str, object]]) -> bytes:
 
 
 st.set_page_config(page_title="Expedientes ETL", page_icon=":material/description:", layout="wide")
-theme = st.sidebar.selectbox("Tema", ["Claro", "Oscuro"], index=0)
+header_column, theme_column = st.columns([5, 1])
+with theme_column:
+    theme = st.selectbox("Tema", ["Claro", "Oscuro"], index=0, label_visibility="collapsed")
 dark_mode = theme == "Oscuro"
 background = "linear-gradient(135deg, #0b1220 0%, #111827 52%, #0f172a 100%)" if dark_mode else "linear-gradient(135deg, #f7fafc 0%, #eef4f8 52%, #e6eff6 100%)"
 text_color = "#f8fafc" if dark_mode else "#1f2937"
@@ -92,48 +94,49 @@ dropzone_background = "#1e293b" if dark_mode else "#ffffff"
 st.markdown(
     f"""
     <style>
-    .stApp {
+    .stApp {{
         background: {background};
         color: {text_color};
-    }
-    .block-container {
+    }}
+    .block-container {{
         max-width: 1100px;
         padding-top: 2rem;
         padding-bottom: 1rem;
-    }
-    h1 {
+    }}
+    h1 {{
         letter-spacing: -0.04em;
         margin-bottom: 0.25rem;
         color: {heading_color};
-    }
-    h2, h3 {
+    }}
+    h2, h3 {{
         color: {heading_color};
-    }
-    .stApp p, .stApp label {
+    }}
+    .stApp p, .stApp label {{
         color: {text_color};
-    }
-    [data-testid="stCaptionContainer"] p {
+    }}
+    [data-testid="stCaptionContainer"] p {{
         color: {muted_color};
-    }
-    div[data-testid="stAlert"] {
+    }}
+    div[data-testid="stAlert"] {{
         padding: 0.55rem 0.85rem;
         margin-bottom: 0.55rem;
-    }
-    div[data-testid="stFileUploader"] {
+    }}
+    div[data-testid="stFileUploader"] {{
         padding-top: 0.1rem;
-    }
-    [data-testid="stFileUploaderDropzone"] {
+    }}
+    [data-testid="stFileUploaderDropzone"] {{
         background: {dropzone_background};
         border-radius: 0.7rem;
-    }
-    div[data-testid="stAlert"] {
+    }}
+    div[data-testid="stAlert"] {{
         border-radius: 0.6rem;
-    }
+    }}
     </style>
     """,
     unsafe_allow_html=True,
 )
-st.title("Expedientes ETL")
+with header_column:
+    st.title("Expedientes ETL")
 st.write("Carga archivos Excel o Word y obtén un resultado ordenado con los datos principales del expediente.")
 st.caption("Uso seguro: utiliza archivos de prueba o autorizados. No subas documentos judiciales reales ni información confidencial.")
 st.caption("Los archivos se procesan temporalmente y las sesiones antiguas se eliminan automáticamente.")
