@@ -87,7 +87,7 @@ st.markdown(
     <style>
     .block-container {{
         max-width: 1100px;
-        padding-top: 1.25rem;
+        padding-top: 0.35rem;
         padding-bottom: 0.75rem;
     }}
     h1 {{
@@ -126,7 +126,7 @@ _remove_expired_sessions()
 
 st.subheader("Seleccionar archivos")
 st.caption("Selecciona uno o varios archivos Excel (.xlsx) o Word (.docx).")
-upload_column, action_column = st.columns([4, 1], vertical_alignment="bottom")
+upload_column, action_column = st.columns([4, 1])
 with upload_column:
     uploaded_files = st.file_uploader(
         "Archivos",
@@ -135,6 +135,7 @@ with upload_column:
         help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
     )
 with action_column:
+    st.markdown("<div style='height: 2.25rem;'></div>", unsafe_allow_html=True)
     process_clicked = st.button("Procesar", type="primary", disabled=not uploaded_files)
 
 if process_clicked:
