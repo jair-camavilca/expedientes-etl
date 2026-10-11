@@ -5,6 +5,7 @@
 [![Word](https://img.shields.io/badge/Word-2B579A?style=for-the-badge&logo=microsoftword&logoColor=white)](https://www.microsoft.com/microsoft-365/word)
 ![ETL](https://img.shields.io/badge/Proceso-ETL-6A1B9A?style=for-the-badge)
 ![Version](https://img.shields.io/badge/Version-1.2.0-2EA44F?style=for-the-badge)
+[![Demo web](https://img.shields.io/badge/Demo%20web-Abrir%20aplicaci%C3%B3n-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://expedientes-etl.streamlit.app/)
 
 Herramienta de procesamiento de datos judiciales que transforma archivos Excel y Word en libros Excel uniformes para alimentar sistemas de consulta judicial.
 
@@ -13,7 +14,7 @@ El sistema extrae y estandariza dos campos de salida:
 - `codigo`: identificador judicial del expediente, normalizado.
 - `parte`: parte procesal; contiene el primer nombre y el primer apellido de la persona natural o la razón social de la entidad.
 
-El proyecto está diseñado para ejecutarse localmente. Los documentos judiciales permanecen en el equipo del usuario y no forman parte del repositorio.
+El proyecto puede ejecutarse localmente o mediante una interfaz web pública. Los documentos judiciales no forman parte del repositorio; para la demostración web deben utilizarse archivos ficticios o autorizados.
 
 ## Funcionalidades
 
@@ -72,7 +73,7 @@ El programa no combina documentos distintos: crea un Excel de salida por cada ar
 
 ### Publicación web opcional
 
-La interfaz puede publicarse como demostración en Streamlit Community Cloud. La versión en línea debe utilizar únicamente archivos ficticios o autorizados. En la nube se aceptan `.xlsx` y `.docx`, con un límite de 50 MB por archivo; el soporte para `.doc` antiguo se mantiene en el flujo local de Windows porque requiere Microsoft Word.
+La demostración pública está disponible en [expedientes-etl.streamlit.app](https://expedientes-etl.streamlit.app/). La versión en línea debe utilizar únicamente archivos ficticios o autorizados. En la nube se aceptan `.xlsx` y `.docx`, con un límite de 50 MB por archivo; el soporte para `.doc` antiguo se mantiene en el flujo local de Windows porque requiere Microsoft Word.
 
 También puede ejecutarse desde PowerShell:
 
