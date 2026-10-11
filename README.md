@@ -43,6 +43,7 @@ Dependencias Python:
 ```text
 pandas>=2.0
 openpyxl>=3.1
+streamlit>=1.40
 ```
 
 ## Instalación
@@ -75,7 +76,9 @@ El programa no combina documentos distintos: crea un Excel de salida por cada ar
 
 La aplicación está disponible en [expedientes-etl.streamlit.app](https://expedientes-etl.streamlit.app/). Para proteger la información, utiliza únicamente archivos ficticios o autorizados. La aplicación acepta `.xlsx` y `.docx`, con un límite de 50 MB por archivo; el soporte para `.doc` antiguo se mantiene en el flujo local de Windows porque requiere Microsoft Word.
 
-También puede ejecutarse desde PowerShell:
+### Ejecución por terminal
+
+El procesamiento local también puede ejecutarse desde PowerShell:
 
 ```powershell
 cd C:\Work\proyectos\expedientes-etl
@@ -125,6 +128,8 @@ expedientes-etl/
 ├── config/                     # Catálogos editables del procesamiento
 │   ├── entidades_juridicas.txt
 │   └── nombres_persona.txt
+├── .streamlit/
+│   └── config.toml             # Límite de carga de la aplicación web
 ├── core/                       # Capas reutilizables del procesamiento
 │   ├── modelos.py              # Modelos de datos
 │   ├── lectores.py             # Lectura de fuentes
@@ -133,6 +138,7 @@ expedientes-etl/
 │   ├── exportacion.py          # Generación de Excel
 │   └── servicio.py             # Servicio común para CLI y web
 ├── expedientes_etl.py           # Aplicación principal
+├── app_web.py                   # Interfaz web de Streamlit
 ├── requirements.txt             # Dependencias Python
 ├── README.md                    # Documentación profesional
 ├── GUIA_USUARIO.md              # Instrucciones para ejecutar el programa
