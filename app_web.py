@@ -126,13 +126,17 @@ _remove_expired_sessions()
 
 st.subheader("Seleccionar archivos")
 st.caption("Excel (.xlsx) o Word (.docx); puedes seleccionar uno o varios archivos.")
-uploaded_files = st.file_uploader(
-    "Archivos de entrada",
-    type=["xlsx", "docx"],
-    accept_multiple_files=True,
-    help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
-)
-process_clicked = st.button("Procesar archivos", type="primary", disabled=not uploaded_files)
+upload_column, action_column = st.columns([4, 1])
+with upload_column:
+    uploaded_files = st.file_uploader(
+        "Archivos de entrada",
+        type=["xlsx", "docx"],
+        accept_multiple_files=True,
+        help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
+    )
+with action_column:
+    st.caption("Acción")
+    process_clicked = st.button("Procesar archivos", type="primary", disabled=not uploaded_files)
 
 if process_clicked:
     session_name = f"{datetime.now():%Y%m%d_%H%M%S}_{uuid4().hex[:8]}"
@@ -140,20 +144,27 @@ if process_clicked:
     if work_dir.exists():
         shutil.rmtree(work_dir)
     results: list[dict[str, object]] = []
-    progress = st.progress(0, text="Iniciando procesamiento...")
+    progress_column, status_column = st.columns([3, 2])
+    with progress_column:
+        progress = st.progress(0, text="Procesando archivos...")
+    with status_column:
+        status_message = st.empty()
     for index, uploaded_file in enumerate(uploaded_files, start=1):
         try:
             source = _save_upload(uploaded_file, work_dir)
             result = _process_file(source, work_dir)
             results.append(result)
-            st.success(f"Procesado: {uploaded_file.name}")
+            status_message.success(f"Procesado {index} de {len(uploaded_files)}")
         except (OSError, RuntimeError, ValueError) as exc:
-            st.error(f"No se pudo procesar {uploaded_file.name}: {exc}")
+            status_message.error(f"Error en {uploaded_file.name}: {exc}")
         progress.progress(index / len(uploaded_files), text=f"Procesando {index} de {len(uploaded_files)}")
 
     if results:
-        st.subheader("Resultados y descargas")
-        st.success(f"Se procesaron {len(results)} archivo(s) correctamente.")
+        result_title_column, result_count_column = st.columns([3, 1])
+        with result_title_column:
+            st.subheader("Resultados y descargas")
+        with result_count_column:
+            st.metric("Archivos procesados", len(results))
         st.dataframe(
             [
                 {
