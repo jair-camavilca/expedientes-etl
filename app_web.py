@@ -87,12 +87,20 @@ st.markdown(
     <style>
     .block-container {{
         max-width: 1100px;
-        padding-top: 2rem;
-        padding-bottom: 1rem;
+        padding-top: 1.25rem;
+        padding-bottom: 0.75rem;
     }}
     h1 {{
         letter-spacing: -0.04em;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.15rem;
+        font-size: 2.15rem;
+    }}
+    h2, h3 {{
+        margin-top: 0.65rem;
+        margin-bottom: 0.35rem;
+    }}
+    .stMarkdown p {{
+        margin-bottom: 0.35rem;
     }}
     div[data-testid="stAlert"] {{
         padding: 0.55rem 0.85rem;
@@ -113,12 +121,11 @@ st.markdown(
 )
 st.title("Expedientes ETL")
 st.write("Carga archivos Excel o Word y obtén un resultado ordenado con los datos principales del expediente.")
-st.caption("Uso seguro: carga únicamente archivos autorizados para tu trabajo.")
-st.caption("Los archivos se procesan temporalmente y las sesiones antiguas se eliminan automáticamente.")
+st.caption("Carga únicamente archivos autorizados. Se procesan temporalmente y las sesiones antiguas se eliminan automáticamente.")
 _remove_expired_sessions()
 
 st.subheader("Seleccionar archivos")
-st.caption("Puedes cargar uno o varios archivos Excel (.xlsx) o Word (.docx).")
+st.caption("Excel (.xlsx) o Word (.docx); puedes seleccionar uno o varios archivos.")
 uploaded_files = st.file_uploader(
     "Archivos de entrada",
     type=["xlsx", "docx"],
@@ -161,20 +168,24 @@ if process_clicked:
             hide_index=True,
         )
         st.subheader("Descargas")
-        for result in results:
-            output_path = Path(result["salida"])
+        download_column, zip_column = st.columns(2)
+        with download_column:
+            for result in results:
+                output_path = Path(result["salida"])
+                st.download_button(
+                    f"Descargar {output_path.name}",
+                    data=output_path.read_bytes(),
+                    file_name=output_path.name,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"output-{output_path.name}",
+                )
+        with zip_column:
             st.download_button(
-                f"Descargar {output_path.name}",
-                data=output_path.read_bytes(),
-                file_name=output_path.name,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"output-{output_path.name}",
+                "Descargar paquete ZIP",
+                data=_zip_results(results),
+                file_name=f"expedientes_etl_resultados_{session_name}.zip",
+                mime="application/zip",
+                key=f"zip-{session_name}",
+                help="Incluye los resultados y los reportes de control de calidad.",
             )
-        st.download_button(
-            "Descargar resultados y control de calidad en ZIP",
-            data=_zip_results(results),
-            file_name=f"expedientes_etl_resultados_{session_name}.zip",
-            mime="application/zip",
-            key=f"zip-{session_name}",
-        )
         st.caption("Los archivos de esta sesión se conservan temporalmente en tmp/web.")
