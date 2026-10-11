@@ -124,19 +124,19 @@ st.write("Carga archivos Excel o Word y obtén un resultado ordenado con los dat
 st.caption("Carga únicamente archivos autorizados. Se procesan temporalmente y las sesiones antiguas se eliminan automáticamente.")
 _remove_expired_sessions()
 
-st.subheader("Seleccionar archivos")
-st.caption("Excel (.xlsx) o Word (.docx); puedes seleccionar uno o varios archivos.")
+st.subheader("Carga de archivos")
+st.caption("Seleccione uno o varios archivos Excel (.xlsx) o Word (.docx) para iniciar el procesamiento.")
 upload_column, action_column = st.columns([4, 1])
 with upload_column:
     uploaded_files = st.file_uploader(
-        "Archivos de entrada",
+        "Archivos de origen",
         type=["xlsx", "docx"],
         accept_multiple_files=True,
         help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
     )
 with action_column:
-    st.caption("Acción")
-    process_clicked = st.button("Procesar archivos", type="primary", disabled=not uploaded_files)
+    st.caption("Procesamiento")
+    process_clicked = st.button("Iniciar procesamiento", type="primary", disabled=not uploaded_files)
 
 if process_clicked:
     session_name = f"{datetime.now():%Y%m%d_%H%M%S}_{uuid4().hex[:8]}"
@@ -146,7 +146,7 @@ if process_clicked:
     results: list[dict[str, object]] = []
     progress_column, status_column = st.columns([3, 2])
     with progress_column:
-        progress = st.progress(0, text="Procesando archivos...")
+        progress = st.progress(0, text="Procesamiento en curso...")
     with status_column:
         status_message = st.empty()
     for index, uploaded_file in enumerate(uploaded_files, start=1):
@@ -154,37 +154,37 @@ if process_clicked:
             source = _save_upload(uploaded_file, work_dir)
             result = _process_file(source, work_dir)
             results.append(result)
-            status_message.success(f"Procesado {index} de {len(uploaded_files)}")
+            status_message.success(f"Procesamiento completado: {index} de {len(uploaded_files)}")
         except (OSError, RuntimeError, ValueError) as exc:
-            status_message.error(f"Error en {uploaded_file.name}: {exc}")
-        progress.progress(index / len(uploaded_files), text=f"Procesando {index} de {len(uploaded_files)}")
+            status_message.error(f"Error durante el procesamiento de {uploaded_file.name}: {exc}")
+        progress.progress(index / len(uploaded_files), text=f"Procesando archivo {index} de {len(uploaded_files)}")
 
     if results:
         result_title_column, result_count_column = st.columns([3, 1])
         with result_title_column:
-            st.subheader("Resultados y descargas")
+            st.subheader("Resultados del procesamiento")
         with result_count_column:
-            st.metric("Archivos procesados", len(results))
+            st.metric("Documentos procesados", len(results))
         st.dataframe(
             [
                 {
-                    "archivo": result["nombre"],
-                    "registros": result["registros"],
-                    "revisión manual": result["revision"],
-                    "conflictos": result["conflictos"],
-                    "alertas": result["alertas"],
+                    "Archivo": result["nombre"],
+                    "Registros": result["registros"],
+                    "Revisión manual": result["revision"],
+                    "Conflictos": result["conflictos"],
+                    "Alertas": result["alertas"],
                 }
                 for result in results
             ],
             hide_index=True,
         )
-        st.subheader("Descargas")
+        st.subheader("Archivos disponibles")
         download_column, zip_column = st.columns(2)
         with download_column:
             for result in results:
                 output_path = Path(result["salida"])
                 st.download_button(
-                    f"Descargar {output_path.name}",
+                    f"Descargar resultado: {output_path.name}",
                     data=output_path.read_bytes(),
                     file_name=output_path.name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -192,11 +192,11 @@ if process_clicked:
                 )
         with zip_column:
             st.download_button(
-                "Descargar paquete ZIP",
+                "Descargar paquete de resultados",
                 data=_zip_results(results),
                 file_name=f"expedientes_etl_resultados_{session_name}.zip",
                 mime="application/zip",
                 key=f"zip-{session_name}",
                 help="Incluye los resultados y los reportes de control de calidad.",
             )
-        st.caption("Los archivos de esta sesión se conservan temporalmente en tmp/web.")
+        st.caption("Los archivos generados se conservan temporalmente durante la sesión.")
