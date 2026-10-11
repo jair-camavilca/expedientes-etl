@@ -82,11 +82,19 @@ def _zip_results(results: list[dict[str, object]]) -> bytes:
 
 
 st.set_page_config(page_title="Expedientes ETL", page_icon=":material/description:", layout="wide")
+theme = st.sidebar.selectbox("Tema", ["Claro", "Oscuro"], index=0)
+dark_mode = theme == "Oscuro"
+background = "linear-gradient(135deg, #0b1220 0%, #111827 52%, #0f172a 100%)" if dark_mode else "linear-gradient(135deg, #f7fafc 0%, #eef4f8 52%, #e6eff6 100%)"
+text_color = "#f8fafc" if dark_mode else "#1f2937"
+heading_color = "#ffffff" if dark_mode else "#17324d"
+muted_color = "#cbd5e1" if dark_mode else "#64748b"
+dropzone_background = "#1e293b" if dark_mode else "#ffffff"
 st.markdown(
-    """
+    f"""
     <style>
     .stApp {
-        background: linear-gradient(135deg, #f7fafc 0%, #eef4f8 52%, #e6eff6 100%);
+        background: {background};
+        color: {text_color};
     }
     .block-container {
         max-width: 1100px;
@@ -96,7 +104,16 @@ st.markdown(
     h1 {
         letter-spacing: -0.04em;
         margin-bottom: 0.25rem;
-        color: #17324d;
+        color: {heading_color};
+    }
+    h2, h3 {
+        color: {heading_color};
+    }
+    .stApp p, .stApp label {
+        color: {text_color};
+    }
+    [data-testid="stCaptionContainer"] p {
+        color: {muted_color};
     }
     div[data-testid="stAlert"] {
         padding: 0.55rem 0.85rem;
@@ -104,6 +121,10 @@ st.markdown(
     }
     div[data-testid="stFileUploader"] {
         padding-top: 0.1rem;
+    }
+    [data-testid="stFileUploaderDropzone"] {
+        background: {dropzone_background};
+        border-radius: 0.7rem;
     }
     div[data-testid="stAlert"] {
         border-radius: 0.6rem;
@@ -118,7 +139,7 @@ st.caption("Uso seguro: utiliza archivos de prueba o autorizados. No subas docum
 st.caption("Los archivos se procesan temporalmente y las sesiones antiguas se eliminan automáticamente.")
 _remove_expired_sessions()
 
-st.subheader("1. Selecciona los archivos")
+st.subheader("Seleccionar archivos")
 st.caption("Puedes cargar uno o varios archivos Excel (.xlsx) o Word (.docx).")
 upload_column, action_column = st.columns([4, 1])
 with upload_column:
@@ -129,7 +150,6 @@ with upload_column:
         help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
     )
 with action_column:
-    st.caption("2. Procesar")
     process_clicked = st.button("Procesar archivos", type="primary", disabled=not uploaded_files)
 
 if process_clicked:
