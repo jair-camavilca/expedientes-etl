@@ -83,9 +83,9 @@ def _zip_results(results: list[dict[str, object]]) -> bytes:
 
 st.set_page_config(page_title="Expedientes ETL", page_icon="📄", layout="wide")
 st.title("Expedientes ETL")
-st.write("Procesa archivos Excel y Word y genera resultados simplificados.")
-st.warning("No cargue documentos judiciales reales ni información confidencial. Use archivos ficticios o autorizados para esta demostración.")
-st.info("Los archivos se procesan temporalmente para generar la descarga y las sesiones antiguas se eliminan automáticamente.")
+st.write("Carga archivos Excel o Word y obtén un resultado ordenado con los datos principales del expediente.")
+st.warning("Por seguridad, utiliza únicamente archivos de prueba o autorizados. No subas documentos judiciales reales ni información confidencial.")
+st.info("Los archivos se procesan de forma temporal para generar los resultados y las sesiones antiguas se eliminan automáticamente.")
 _remove_expired_sessions()
 
 uploaded_files = st.file_uploader(

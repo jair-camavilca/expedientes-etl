@@ -14,7 +14,7 @@ El sistema extrae y estandariza dos campos de salida:
 - `codigo`: identificador judicial del expediente, normalizado.
 - `parte`: parte procesal; contiene el primer nombre y el primer apellido de la persona natural o la razón social de la entidad.
 
-El proyecto puede ejecutarse localmente o mediante una interfaz web pública. Los documentos judiciales no forman parte del repositorio; para la demostración web deben utilizarse archivos ficticios o autorizados.
+El proyecto puede ejecutarse localmente o mediante una interfaz web pública. Los documentos judiciales no forman parte del repositorio; para la aplicación web deben utilizarse archivos ficticios o autorizados.
 
 ## Funcionalidades
 
@@ -71,9 +71,9 @@ Ejecute `ejecutar_expedientes_web.bat` para abrir una interfaz local en el naveg
 
 El programa no combina documentos distintos: crea un Excel de salida por cada archivo de entrada.
 
-### Publicación web opcional
+### Aplicación web
 
-La demostración pública está disponible en [expedientes-etl.streamlit.app](https://expedientes-etl.streamlit.app/). La versión en línea debe utilizar únicamente archivos ficticios o autorizados. En la nube se aceptan `.xlsx` y `.docx`, con un límite de 50 MB por archivo; el soporte para `.doc` antiguo se mantiene en el flujo local de Windows porque requiere Microsoft Word.
+La aplicación está disponible en [expedientes-etl.streamlit.app](https://expedientes-etl.streamlit.app/). Para proteger la información, utiliza únicamente archivos ficticios o autorizados. La aplicación acepta `.xlsx` y `.docx`, con un límite de 50 MB por archivo; el soporte para `.doc` antiguo se mantiene en el flujo local de Windows porque requiere Microsoft Word.
 
 También puede ejecutarse desde PowerShell:
 
