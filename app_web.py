@@ -82,23 +82,53 @@ def _zip_results(results: list[dict[str, object]]) -> bytes:
 
 
 st.set_page_config(page_title="Expedientes ETL", page_icon=":material/description:", layout="wide")
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: linear-gradient(135deg, #0b1220 0%, #111827 52%, #0f172a 100%);
+    }
+    .block-container {
+        max-width: 1100px;
+        padding-top: 2rem;
+        padding-bottom: 1rem;
+    }
+    h1 {
+        letter-spacing: -0.04em;
+        margin-bottom: 0.25rem;
+    }
+    div[data-testid="stAlert"] {
+        padding: 0.55rem 0.85rem;
+        margin-bottom: 0.55rem;
+    }
+    div[data-testid="stFileUploader"] {
+        padding-top: 0.1rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 st.title("Expedientes ETL")
 st.write("Carga archivos Excel o Word y obtén un resultado ordenado con los datos principales del expediente.")
-st.warning("Por seguridad, utiliza únicamente archivos de prueba o autorizados. No subas documentos judiciales reales ni información confidencial.")
-st.info("Los archivos se procesan de forma temporal para generar los resultados y las sesiones antiguas se eliminan automáticamente.")
+st.caption("Uso seguro: utiliza archivos de prueba o autorizados. No subas documentos judiciales reales ni información confidencial.")
+st.caption("Los archivos se procesan temporalmente y las sesiones antiguas se eliminan automáticamente.")
 _remove_expired_sessions()
 
 st.subheader("1. Selecciona los archivos")
 st.caption("Puedes cargar uno o varios archivos Excel (.xlsx) o Word (.docx).")
-uploaded_files = st.file_uploader(
-    "Archivos de entrada",
-    type=["xlsx", "docx"],
-    accept_multiple_files=True,
-    help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
-)
+upload_column, action_column = st.columns([4, 1])
+with upload_column:
+    uploaded_files = st.file_uploader(
+        "Archivos de entrada",
+        type=["xlsx", "docx"],
+        accept_multiple_files=True,
+        help="La versión web acepta Excel (.xlsx) y Word moderno (.docx). Para .doc antiguo use el flujo local de Windows.",
+    )
+with action_column:
+    st.caption("2. Procesar")
+    process_clicked = st.button("Procesar archivos", type="primary", disabled=not uploaded_files)
 
-st.subheader("2. Procesa la información")
-if st.button("Procesar archivos", type="primary", disabled=not uploaded_files):
+if process_clicked:
     session_name = f"{datetime.now():%Y%m%d_%H%M%S}_{uuid4().hex[:8]}"
     work_dir = TMP_ROOT / session_name
     if work_dir.exists():
