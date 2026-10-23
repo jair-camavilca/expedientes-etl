@@ -439,8 +439,23 @@ def _excel_frames(path: Path) -> Iterator[pd.DataFrame]:
     except ValueError as exc:
         message = str(exc).casefold()
         if "sheet name is an empty list" in message:
-            raise ValueError(f"El archivo {path.name} no contiene hojas válidas o está vacío.") from exc
-        raise ValueError(f"No se pudo leer el archivo Excel {path.name}. Verifique que no esté dañado o protegido.") from exc
+            try:
+                workbook = load_workbook(path, read_only=True, data_only=True)
+                try:
+                    sheets = {
+                        worksheet.title: pd.DataFrame(
+                            list(worksheet.iter_rows(values_only=True)), dtype=str
+                        )
+                        for worksheet in workbook.worksheets
+                    }
+                finally:
+                    workbook.close()
+            except (OSError, ValueError, KeyError) as fallback_exc:
+                raise ValueError(f"El archivo {path.name} no contiene hojas válidas o está vacío.") from fallback_exc
+            if not sheets:
+                raise ValueError(f"El archivo {path.name} no contiene hojas válidas o está vacío.") from exc
+        else:
+            raise ValueError(f"No se pudo leer el archivo Excel {path.name}. Verifique que no esté dañado o protegido.") from exc
     code_aliases = (
         "codigo", "código", "expediente", "id expediente",
         "identificador del expediente", "número de expediente",
