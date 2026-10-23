@@ -434,16 +434,23 @@ def _find_column(columns: Sequence[object], aliases: Iterable[str]) -> str | Non
 
 def _excel_frames(path: Path) -> Iterator[pd.DataFrame]:
     """Lee hojas Excel detectando la fila real de encabezados."""
-    sheets = pd.read_excel(path, sheet_name=None, header=None, dtype=str)
+    try:
+        sheets = pd.read_excel(path, sheet_name=None, header=None, dtype=str)
+    except ValueError as exc:
+        message = str(exc).casefold()
+        if "sheet name is an empty list" in message:
+            raise ValueError(f"El archivo {path.name} no contiene hojas válidas o está vacío.") from exc
+        raise ValueError(f"No se pudo leer el archivo Excel {path.name}. Verifique que no esté dañado o protegido.") from exc
     code_aliases = (
         "codigo", "código", "expediente", "id expediente",
         "identificador del expediente", "número de expediente",
         "nro expediente", "n expediente", "n de expediente",
+        "n° exp", "nº exp", "no exp", "n exp", "nro exp",
     )
     party_aliases = (
         "parte", "partes", "litigante", "litigantes", "parte procesal",
         "demandante", "demandado", "titular", "nombres y apellidos",
-        "nombre y apellidos", "nombre y apellido",
+        "nombre y apellidos", "nombre y apellido", "cliente",
     )
     for raw in sheets.values():
         if raw.empty:
@@ -469,8 +476,8 @@ def _excel_frames(path: Path) -> Iterator[pd.DataFrame]:
 def process_excel(path: Path, code_column: str | None = None, party_column: str | None = None, quality_issues: list[dict[str, str]] | None = None) -> list[Record]:
     """Lee todas las hojas de un Excel y transforma sus filas."""
     records: list[Record] = []
-    code_aliases = ("codigo", "código", "expediente", "id expediente", "identificador del expediente", "número de expediente", "nro expediente", "n expediente", "n de expediente")
-    party_aliases = ("parte", "partes", "litigante", "litigantes", "parte procesal", "demandante", "demandado", "titular", "nombres y apellidos", "nombre y apellidos", "nombre y apellido")
+    code_aliases = ("codigo", "código", "expediente", "id expediente", "identificador del expediente", "número de expediente", "nro expediente", "n expediente", "n de expediente", "n° exp", "nº exp", "no exp", "n exp", "nro exp")
+    party_aliases = ("parte", "partes", "litigante", "litigantes", "parte procesal", "demandante", "demandado", "titular", "nombres y apellidos", "nombre y apellidos", "nombre y apellido", "cliente")
     for frame in _excel_frames(path):
         if frame.empty:
             continue

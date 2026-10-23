@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pandas as pd
+
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))
 
@@ -14,6 +16,21 @@ import expedientes_etl as etl  # noqa: E402
 
 
 class CodeTests(unittest.TestCase):
+    def test_accepts_exp_and_partes_headers(self) -> None:
+        frame = pd.DataFrame(
+            [["00120-2012-0-3040-JP-FC-01", "CUADROS ORDONEZ Y CUADROS", "CUADROS ORDONEZ"]],
+            columns=["N° EXP", "PARTES", "CLIENTE"],
+        )
+        with patch.object(etl, "_excel_frames", return_value=[frame]):
+            records = etl.process_excel(Path("LISTA DE EXP.xlsx"))
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].codigo, "00120-2012-0-3040-JP-FC-01")
+
+    def test_reports_excel_without_valid_sheets(self) -> None:
+        with patch.object(etl.pd, "read_excel", side_effect=ValueError("Sheet name is an empty list")):
+            with self.assertRaisesRegex(ValueError, "no contiene hojas"):
+                list(etl._excel_frames(Path("LISTA DE EXP.xlsx")))
+
     def test_rejects_document_without_processable_records(self) -> None:
         source = Path("documento_sin_expedientes.docx")
         with patch.object(etl, "process_word", return_value=[]):
