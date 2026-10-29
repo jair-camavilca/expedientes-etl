@@ -25,7 +25,7 @@ class CodeTests(unittest.TestCase):
             records = etl.process_excel(Path("LISTA DE EXP.xlsx"))
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0].codigo, "00120-2012-0-3040-JP-FC-01")
-        self.assertEqual(records[0].clientes, "Cuadros")
+        self.assertEqual(records[0].cliente, "Cuadros")
 
     def test_extracts_only_first_client_name(self) -> None:
         self.assertEqual(etl.first_client_name("JUAN PÉREZ"), "Juan")
@@ -38,7 +38,7 @@ class CodeTests(unittest.TestCase):
             etl.Record("00001-2025-0-1801-JR-CI-01", "Rivera", "Josué"),
         ]
         result = etl.deduplicate(records)
-        self.assertEqual(result.iloc[0]["clientes"], "Juan, Pedro y Josué")
+        self.assertEqual(result.iloc[0]["cliente"], "Juan, Pedro y Josué")
 
     def test_reports_excel_without_valid_sheets(self) -> None:
         with patch.object(etl.pd, "read_excel", side_effect=ValueError("Sheet name is an empty list")):

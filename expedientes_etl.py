@@ -1,7 +1,7 @@
 """ETL de registros judiciales para Expedientes ETL.
 
 Admite fuentes Excel (.xlsx) y Word (.docx), y genera las columnas
-``codigo``, ``parte`` y ``clientes`` en un libro Excel formateado.
+``codigo``, ``parte`` y ``cliente`` en un libro Excel formateado.
 """
 
 from __future__ import annotations
@@ -423,7 +423,7 @@ def choose_party(value: object) -> str:
 
 
 def first_client_name(value: object) -> str:
-    """Obtiene únicamente el primer nombre registrado para la columna clientes."""
+    """Obtiene únicamente el primer nombre registrado para la columna cliente."""
     text = normalize_text(value)
     if not text:
         return ""
@@ -701,7 +701,7 @@ def deduplicate(records: Iterable[Record]) -> pd.DataFrame:
     """Elimina duplicados y agrupa clientes para cada código y parte."""
     grouped: dict[tuple[str, str], list[str]] = {}
     for record in records:
-        grouped.setdefault((record.codigo, record.parte), []).append(record.clientes)
+        grouped.setdefault((record.codigo, record.parte), []).append(record.cliente)
 
     def join_clients(values: Iterable[str]) -> str:
         unique: list[str] = []
@@ -720,10 +720,10 @@ def deduplicate(records: Iterable[Record]) -> pd.DataFrame:
 
     return pd.DataFrame(
         [
-            {"codigo": code, "parte": party, "clientes": join_clients(clients)}
+            {"codigo": code, "parte": party, "cliente": join_clients(clients)}
             for (code, party), clients in grouped.items()
         ],
-        columns=["codigo", "parte", "clientes"],
+        columns=["codigo", "parte", "cliente"],
     )
 
 
@@ -952,12 +952,12 @@ def style_output_sheet(worksheet: Worksheet, dataframe: pd.DataFrame) -> None:
 
 
 def export_xlsx(dataframe: pd.DataFrame, output_path: Path) -> None:
-    """Exporta ``codigo``, ``parte`` y ``clientes`` con estilos."""
+    """Exporta ``codigo``, ``parte`` y ``cliente`` con estilos."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "Expedientes ETL"
-    output_columns = ["codigo", "parte", "clientes"]
+    output_columns = ["codigo", "parte", "cliente"]
     output = dataframe.reindex(columns=output_columns, fill_value="")
     worksheet.append(output_columns)
     for row in output.itertuples(index=False, name=None):

@@ -41,7 +41,7 @@ La salida principal contiene:
 
 - `codigo`: expediente normalizado cuando corresponde.
 - `parte`: nombre o entidad principal extraída.
-- `clientes`: primeros nombres tomados de la columna `CLIENTE` o `CLIENTES`, agrupados cuando corresponden al mismo expediente y parte.
+- `cliente`: primeros nombres tomados de la columna `CLIENTE` o `CLIENTES`, agrupados cuando corresponden al mismo expediente y parte.
 
 Los nombres se simplifican conservando la información útil. Los conflictos con un mismo código y distintas partes se mantienen como registros separados.
 
