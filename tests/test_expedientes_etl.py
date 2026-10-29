@@ -25,7 +25,11 @@ class CodeTests(unittest.TestCase):
             records = etl.process_excel(Path("LISTA DE EXP.xlsx"))
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0].codigo, "00120-2012-0-3040-JP-FC-01")
-        self.assertEqual(records[0].clientes, "CUADROS ORDONEZ")
+        self.assertEqual(records[0].clientes, "Cuadros")
+
+    def test_extracts_only_first_client_name(self) -> None:
+        self.assertEqual(etl.first_client_name("JUAN PÉREZ"), "Juan")
+        self.assertEqual(etl.first_client_name("María del Carmen"), "María")
 
     def test_groups_clients_with_spanish_conjunction(self) -> None:
         records = [

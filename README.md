@@ -13,7 +13,7 @@ El sistema extrae y estandariza tres campos de salida:
 
 - `codigo`: identificador judicial del expediente, normalizado.
 - `parte`: parte procesal; contiene el primer nombre y el primer apellido de la persona natural o la razón social de la entidad.
-- `clientes`: nombres identificados en la columna `CLIENTE` o `CLIENTES` de la fuente. Cuando existen varios para el mismo expediente, se concatenan en una sola celda.
+- `clientes`: primer nombre identificado en la columna `CLIENTE` o `CLIENTES` de la fuente. Cuando existen varios para el mismo expediente, se concatenan en una sola celda.
 
 El proyecto puede ejecutarse localmente o mediante una interfaz web pública. Los documentos judiciales no forman parte del repositorio; para la aplicación web deben utilizarse archivos ficticios o autorizados.
 

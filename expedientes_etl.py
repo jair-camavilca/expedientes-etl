@@ -422,6 +422,15 @@ def choose_party(value: object) -> str:
     return extract_surnames(text)
 
 
+def first_client_name(value: object) -> str:
+    """Obtiene únicamente el primer nombre registrado para la columna clientes."""
+    text = normalize_text(value)
+    if not text:
+        return ""
+    match = re.search(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+", text)
+    return match.group(0).title() if match else ""
+
+
 def _find_column(columns: Sequence[object], aliases: Iterable[str]) -> str | None:
     normalized = {_header_key(column): str(column) for column in columns}
     for alias in aliases:
@@ -509,7 +518,7 @@ def process_excel(path: Path, code_column: str | None = None, party_column: str 
         for _, row in frame.iterrows():
             code_value = normalize_text(row.get(selected_code, ""))
             party_value = normalize_text(row.get(selected_party, ""))
-            client_value = normalize_text(row.get(selected_client, "")) if selected_client else ""
+            client_value = first_client_name(row.get(selected_client, "")) if selected_client else ""
             if not code_value and not party_value:
                 continue
             if _header_key(code_value) in code_header_keys or _header_key(party_value) in party_header_keys:
