@@ -61,7 +61,7 @@ class RealInputIntegrationTests(unittest.TestCase):
             ((alerts["codigo"] == "NO DEFINIDO") & (alerts["parte"] == "CONSTRUCTORA INARCO S.A.C")).any()
         )
         self.assertIn(
-            ("38438-2013-0-1801-JR-CI-03", "INVERSIONES PLATINUM (DIEGO FARAH)"),
+            ("38438-2013-0-1801-JR-CI-03", "INVERSIONES PLATINUM (DIEGO FARAH)", ""),
             set(map(tuple, etl.deduplicate(records).to_records(index=False))),
         )
         self.assertNotIn("De Los Heros Ballen", set(alerts["parte"]))

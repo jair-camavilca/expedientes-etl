@@ -25,6 +25,16 @@ class CodeTests(unittest.TestCase):
             records = etl.process_excel(Path("LISTA DE EXP.xlsx"))
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0].codigo, "00120-2012-0-3040-JP-FC-01")
+        self.assertEqual(records[0].clientes, "CUADROS ORDONEZ")
+
+    def test_groups_clients_with_spanish_conjunction(self) -> None:
+        records = [
+            etl.Record("00001-2025-0-1801-JR-CI-01", "Rivera", "Juan"),
+            etl.Record("00001-2025-0-1801-JR-CI-01", "Rivera", "Pedro"),
+            etl.Record("00001-2025-0-1801-JR-CI-01", "Rivera", "Josué"),
+        ]
+        result = etl.deduplicate(records)
+        self.assertEqual(result.iloc[0]["clientes"], "Juan, Pedro y Josué")
 
     def test_reports_excel_without_valid_sheets(self) -> None:
         with patch.object(etl.pd, "read_excel", side_effect=ValueError("Sheet name is an empty list")):
@@ -211,8 +221,8 @@ class ConflictTests(unittest.TestCase):
         result = etl.deduplicate(records)
         self.assertEqual(len(result), 2)
         self.assertEqual(set(map(tuple, result.to_records(index=False))), {
-            ("00001-2020-0-0001-JR-CI-01", "Rivera"),
-            ("00001-2020-0-0001-JR-CI-01", "Gonzales"),
+            ("00001-2020-0-0001-JR-CI-01", "Rivera", ""),
+            ("00001-2020-0-0001-JR-CI-01", "Gonzales", ""),
         })
 
     def test_conflict_report_keeps_distinct_parts(self) -> None:

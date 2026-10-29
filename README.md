@@ -9,10 +9,11 @@
 
 Herramienta de procesamiento de datos judiciales que transforma archivos Excel y Word en libros Excel uniformes para alimentar sistemas de consulta judicial.
 
-El sistema extrae y estandariza dos campos de salida:
+El sistema extrae y estandariza tres campos de salida:
 
 - `codigo`: identificador judicial del expediente, normalizado.
 - `parte`: parte procesal; contiene el primer nombre y el primer apellido de la persona natural o la razón social de la entidad.
+- `clientes`: nombres identificados en la columna `CLIENTE` o `CLIENTES` de la fuente. Cuando existen varios para el mismo expediente, se concatenan en una sola celda.
 
 El proyecto puede ejecutarse localmente o mediante una interfaz web pública. Los documentos judiciales no forman parte del repositorio; para la aplicación web deben utilizarse archivos ficticios o autorizados.
 
@@ -109,8 +110,8 @@ Los parámetros anteriores se refieren a los encabezados originales del Excel de
 - `ID Expediente`: identificador del expediente en la fuente.
 - `Litigantes`: parte procesal o litigante registrado en la fuente.
 
-No son los nombres de las columnas finales. La salida siempre contiene exactamente:
-`codigo` y `parte`.
+No son los nombres de las columnas finales. La salida contiene:
+`codigo`, `parte` y `clientes`.
 
 ## Estructura
 
@@ -156,7 +157,7 @@ La carpeta `core` separa las responsabilidades principales: los lectores reciben
 
 ## Archivos de salida
 
-Cada entrada produce un libro con una hoja principal que contiene exactamente `codigo` y `parte`.
+Cada entrada produce un libro con una hoja principal que contiene `codigo`, `parte` y `clientes`.
 
 Además, se genera un libro de control de calidad con:
 

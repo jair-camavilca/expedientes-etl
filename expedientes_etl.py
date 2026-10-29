@@ -1,7 +1,7 @@
 """ETL de registros judiciales para Expedientes ETL.
 
-Admite fuentes Excel (.xlsx) y Word (.docx), y genera exactamente las
-columnas ``codigo`` y ``parte`` en un libro Excel formateado.
+Admite fuentes Excel (.xlsx) y Word (.docx), y genera las columnas
+``codigo``, ``parte`` y ``clientes`` en un libro Excel formateado.
 """
 
 from __future__ import annotations
@@ -493,11 +493,13 @@ def process_excel(path: Path, code_column: str | None = None, party_column: str 
     records: list[Record] = []
     code_aliases = ("codigo", "código", "expediente", "id expediente", "identificador del expediente", "número de expediente", "nro expediente", "n expediente", "n de expediente", "n° exp", "nº exp", "no exp", "n exp", "nro exp")
     party_aliases = ("parte", "partes", "litigante", "litigantes", "parte procesal", "demandante", "demandado", "titular", "nombres y apellidos", "nombre y apellidos", "nombre y apellido", "cliente")
+    client_aliases = ("cliente", "clientes", "nombre cliente", "nombres de clientes")
     for frame in _excel_frames(path):
         if frame.empty:
             continue
         selected_code = code_column or _find_column(frame.columns, code_aliases)
         selected_party = party_column or _find_column(frame.columns, party_aliases)
+        selected_client = _find_column(frame.columns, client_aliases)
         if not selected_code:
             raise ValueError("No se encontró una columna de código/expediente en el Excel.")
         if not selected_party:
@@ -507,6 +509,7 @@ def process_excel(path: Path, code_column: str | None = None, party_column: str 
         for _, row in frame.iterrows():
             code_value = normalize_text(row.get(selected_code, ""))
             party_value = normalize_text(row.get(selected_party, ""))
+            client_value = normalize_text(row.get(selected_client, "")) if selected_client else ""
             if not code_value and not party_value:
                 continue
             if _header_key(code_value) in code_header_keys or _header_key(party_value) in party_header_keys:
@@ -526,7 +529,7 @@ def process_excel(path: Path, code_column: str | None = None, party_column: str 
                 for code in codes or [""]:
                     quality_issues.append({"codigo": code, "parte": party, "nivel": "MEDIA", "motivo": surname_issue})
             for code in codes:
-                records.append(Record(code, party))
+                records.append(Record(code, party, client_value))
     return records
 
 
@@ -686,13 +689,32 @@ try {{
 
 
 def deduplicate(records: Iterable[Record]) -> pd.DataFrame:
-    """Elimina solo duplicados exactos de la pareja código-parte."""
-    unique_pairs: dict[tuple[str, str], None] = {}
+    """Elimina duplicados y agrupa clientes para cada código y parte."""
+    grouped: dict[tuple[str, str], list[str]] = {}
     for record in records:
-        unique_pairs[(record.codigo, record.parte)] = None
+        grouped.setdefault((record.codigo, record.parte), []).append(record.clientes)
+
+    def join_clients(values: Iterable[str]) -> str:
+        unique: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            clean = normalize_text(value)
+            key = _strip_accents(clean).casefold()
+            if clean and key not in seen:
+                seen.add(key)
+                unique.append(clean)
+        if len(unique) <= 1:
+            return unique[0] if unique else ""
+        if len(unique) == 2:
+            return " y ".join(unique)
+        return ", ".join(unique[:-1]) + " y " + unique[-1]
+
     return pd.DataFrame(
-        [{"codigo": code, "parte": party} for code, party in unique_pairs],
-        columns=["codigo", "parte"],
+        [
+            {"codigo": code, "parte": party, "clientes": join_clients(clients)}
+            for (code, party), clients in grouped.items()
+        ],
+        columns=["codigo", "parte", "clientes"],
     )
 
 
@@ -921,15 +943,17 @@ def style_output_sheet(worksheet: Worksheet, dataframe: pd.DataFrame) -> None:
 
 
 def export_xlsx(dataframe: pd.DataFrame, output_path: Path) -> None:
-    """Exporta únicamente ``codigo`` y ``parte`` con estilos."""
+    """Exporta ``codigo``, ``parte`` y ``clientes`` con estilos."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "Expedientes ETL"
-    worksheet.append(["codigo", "parte"])
-    for row in dataframe[["codigo", "parte"]].itertuples(index=False, name=None):
+    output_columns = ["codigo", "parte", "clientes"]
+    output = dataframe.reindex(columns=output_columns, fill_value="")
+    worksheet.append(output_columns)
+    for row in output.itertuples(index=False, name=None):
         worksheet.append(list(row))
-    style_output_sheet(worksheet, dataframe[["codigo", "parte"]])
+    style_output_sheet(worksheet, output)
     workbook.save(output_path)
 
 

@@ -9,3 +9,4 @@ class Record:
 
     codigo: str
     parte: str
+    clientes: str = ""
